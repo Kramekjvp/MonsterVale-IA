@@ -1,0 +1,276 @@
+{
+  "level": "level_05",
+  "started_at": "2026-11-14T20:02:43",
+  "result": "lost",
+  "duration": 155.5666666666826,
+  "lives_final": 0,
+  "gold_final": 42,
+  "stars": 0,
+  "actions": [
+    {
+      "time": 0.0,
+      "action": "place",
+      "unit": "monk",
+      "cell": [
+        12,
+        3
+      ],
+      "level": 1,
+      "gold_after": 145,
+      "wave": 0
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "upgrade",
+      "unit": "monk",
+      "cell": [
+        12,
+        3
+      ],
+      "level": 2,
+      "gold_after": 128,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "place",
+      "unit": "rogue",
+      "cell": [
+        13,
+        7
+      ],
+      "level": 1,
+      "gold_after": 68,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "place",
+      "unit": "archer",
+      "cell": [
+        8,
+        6
+      ],
+      "level": 1,
+      "gold_after": 3,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "dismiss",
+      "unit": "monk",
+      "cell": [
+        12,
+        3
+      ],
+      "level": 2,
+      "gold_after": 48,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        8,
+        6
+      ],
+      "level": 2,
+      "gold_after": 8,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "dismiss",
+      "unit": "rogue",
+      "cell": [
+        13,
+        7
+      ],
+      "level": 1,
+      "gold_after": 38,
+      "wave": 1
+    },
+    {
+      "time": 45.64999999999869,
+      "action": "dismiss",
+      "unit": "archer",
+      "cell": [
+        8,
+        6
+      ],
+      "level": 2,
+      "gold_after": 90,
+      "wave": 1
+    },
+    {
+      "time": 88.66666666666292,
+      "action": "place",
+      "unit": "rogue",
+      "cell": [
+        3,
+        4
+      ],
+      "level": 1,
+      "gold_after": 40,
+      "wave": 2
+    },
+    {
+      "time": 140.65000000000407,
+      "action": "upgrade",
+      "unit": "rogue",
+      "cell": [
+        3,
+        4
+      ],
+      "level": 2,
+      "gold_after": 17,
+      "wave": 3
+    },
+    {
+      "time": 140.65000000000407,
+      "action": "dismiss",
+      "unit": "rogue",
+      "cell": [
+        3,
+        4
+      ],
+      "level": 2,
+      "gold_after": 67,
+      "wave": 3
+    },
+    {
+      "time": 140.65000000000407,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        3,
+        3
+      ],
+      "level": 1,
+      "gold_after": 17,
+      "wave": 3
+    },
+    {
+      "time": 140.65000000000407,
+      "action": "dismiss",
+      "unit": "warrior",
+      "cell": [
+        3,
+        3
+      ],
+      "level": 1,
+      "gold_after": 42,
+      "wave": 3
+    }
+  ],
+  "waves": [
+    {
+      "number": 1,
+      "started_at": 0.0,
+      "cleared_at": 45.66666666666536,
+      "called_early": true,
+      "early_bonus": 4,
+      "gold_start": 149,
+      "gold_end": 163,
+      "lives_start": 20,
+      "lives_end": 14,
+      "defenders": {
+        "monk 1": 1
+      },
+      "spawned": {
+        "goblin": 8
+      },
+      "killed": {
+        "goblin": 2
+      },
+      "escaped": {
+        "goblin": 6
+      },
+      "damage": {
+        "monk": 56
+      },
+      "kill_gold": 4,
+      "bonus": 10,
+      "units_down": 1
+    },
+    {
+      "number": 2,
+      "started_at": 45.66666666666536,
+      "cleared_at": 88.68333333332959,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 90,
+      "gold_end": 100,
+      "lives_start": 14,
+      "lives_end": 10,
+      "defenders": {},
+      "spawned": {
+        "slime": 2
+      },
+      "killed": {},
+      "escaped": {
+        "slime": 2
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 3,
+      "started_at": 88.68333333332959,
+      "cleared_at": 140.66666666667075,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 40,
+      "gold_end": 57,
+      "lives_start": 10,
+      "lives_end": 2,
+      "defenders": {
+        "rogue 1": 1
+      },
+      "spawned": {
+        "skeleton": 5,
+        "goblin_fast": 4
+      },
+      "killed": {
+        "skeleton": 1
+      },
+      "escaped": {
+        "goblin_fast": 4,
+        "skeleton": 4
+      },
+      "damage": {
+        "rogue": 51
+      },
+      "kill_gold": 2,
+      "bonus": 15,
+      "units_down": 1
+    },
+    {
+      "number": 4,
+      "started_at": 140.66666666667075,
+      "cleared_at": null,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 42,
+      "gold_end": null,
+      "lives_start": 2,
+      "lives_end": 0,
+      "defenders": {},
+      "spawned": {
+        "wolf": 6,
+        "goblin_shield": 2
+      },
+      "killed": {},
+      "escaped": {
+        "wolf": 2
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 0,
+      "units_down": 0
+    }
+  ]
+}

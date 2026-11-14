@@ -11,9 +11,11 @@ extends SceneTree
 ##
 ## Uso (a partir da raiz do monstervale-ia):
 ##   godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/partidas.json
+## Com uma pasta como segundo argumento, repete os relatórios dela (ex.: partidas da rede):
+##   godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- saida.json ../pasta/com/relatorios
 
 const RecordedPlayer = preload("res://tests/e2e/recorded_player.gd")
-const MATCHES_DIR := "res://tests/fixtures/partidas/"
+const FIXTURES_DIR := "res://tests/fixtures/partidas/"
 const SAVE_PATH := "user://captura_progress.json"
 const SETTINGS_PATH := "user://captura_settings.json"
 const LOG_DIR := "user://captura_partidas"
@@ -24,13 +26,17 @@ const WAVE_FIELDS := ["spawned", "killed", "escaped", "units_down", "lives_end",
 var _kinds: Array
 var _out: String
 var _files: Array
+var _dir: String
 var _output := {}
 var _impressao = load(ProjectSettings.globalize_path("res://").path_join("../ferramentas/impressao_digital.gd").simplify_path())
 
 
 func _initialize() -> void:
-	_out = ProjectSettings.globalize_path("res://").path_join(OS.get_cmdline_user_args()[0]).simplify_path()
-	_files = Array(DirAccess.get_files_at(MATCHES_DIR)).filter(func(f): return f.ends_with(".json"))
+	var args := OS.get_cmdline_user_args()
+	var root := ProjectSettings.globalize_path("res://")
+	_out = root.path_join(args[0]).simplify_path()
+	_dir = root.path_join(args[1]).simplify_path() + "/" if args.size() > 1 else FIXTURES_DIR
+	_files = Array(DirAccess.get_files_at(_dir)).filter(func(f): return f.ends_with(".json"))
 	_files.sort()
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"stars": {"0": 3, "1": 3, "2": 3, "3": 3}}))
@@ -45,7 +51,7 @@ func _process(_delta: float) -> bool:
 		f.close()
 		return true
 	var name: String = _files.pop_front()
-	_output[name] = _capture(JSON.parse_string(FileAccess.get_file_as_string(MATCHES_DIR + name)))
+	_output[name] = _capture(JSON.parse_string(FileAccess.get_file_as_string(_dir + name)))
 	var r: Dictionary = _output[name]
 	print("%s: %s, %d vidas, %d ações, cliques falhos %s" % [name, r.state, r.lives, r.actions.size(), r.failed_clicks])
 	return false

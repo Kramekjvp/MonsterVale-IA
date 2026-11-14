@@ -26,6 +26,8 @@ godot --headless --path jogo -s ../ferramentas/referencias_ordenacao.gd -- ../te
 uv run python ferramentas/gerar_roteiros.py   # roteiros de ações para a paridade da simulação
 godot --headless --path jogo -s ../ferramentas/executar_roteiro.gd -- ../testes/referencias/roteiros_entrada.json ../testes/referencias/roteiros.json
 godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/partidas.json   # ~4 min
+uv run python ferramentas/gerar_partidas_agente.py   # partidas do ambiente exportadas no formato do jogo
+godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/agente.json ../testes/referencias/agente
 ```
 
 ## Port da simulação
@@ -37,5 +39,11 @@ godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes
 - `sort_custom` do Godot não é estável: use `ordenar_como_godot` (godot.py), nunca `sorted()`.
 - Os nomes de estado ("playing", "won", "lost") e de eventos ("unit_placed"...) ficam iguais aos do jogo.
 - Paridade é igualdade exata, sem tolerância. Se um teste dourado falhar, procure a operação que mudou de precisão.
+
+## Ambiente (M3)
+
+- `monstervale_ia/ambiente.py`: Gymnasium, modo por fase de construção. Ações: `tipo × 220 + y × 20 + x` (0–6 posicionar, 7 melhorar, 8 dispensar) e 1980 = chamar onda.
+- Ações permitidas pela máscara TÊM que funcionar (o ambiente confere com assert).
+- `salvar_relatorio()` ajusta os tempos em −1/60 s para o recorded_player do jogo repetir no mesmo quadro.
 
 Godot fixado em 4.7.2 (mesma versão do jogo).

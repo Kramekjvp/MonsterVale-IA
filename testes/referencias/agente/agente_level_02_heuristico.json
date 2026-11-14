@@ -1,0 +1,593 @@
+{
+  "level": "level_02",
+  "started_at": "2026-11-14T20:02:20",
+  "result": "lost",
+  "duration": 786.3499999996135,
+  "lives_final": 0,
+  "gold_final": 181,
+  "stars": 0,
+  "actions": [
+    {
+      "time": 0.0,
+      "action": "place",
+      "unit": "archer",
+      "cell": [
+        14,
+        2
+      ],
+      "level": 1,
+      "gold_after": 75,
+      "wave": 0
+    },
+    {
+      "time": 0.0,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        14,
+        2
+      ],
+      "level": 2,
+      "gold_after": 35,
+      "wave": 0
+    },
+    {
+      "time": 44.64999999999875,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        14,
+        4
+      ],
+      "level": 1,
+      "gold_after": 7,
+      "wave": 1
+    },
+    {
+      "time": 171.90000000002894,
+      "action": "upgrade",
+      "unit": "warrior",
+      "cell": [
+        14,
+        4
+      ],
+      "level": 2,
+      "gold_after": 25,
+      "wave": 3
+    },
+    {
+      "time": 237.48333333341446,
+      "action": "upgrade",
+      "unit": "warrior",
+      "cell": [
+        14,
+        4
+      ],
+      "level": 3,
+      "gold_after": 10,
+      "wave": 4
+    },
+    {
+      "time": 359.0166666666688,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        14,
+        2
+      ],
+      "level": 3,
+      "gold_after": 20,
+      "wave": 6
+    },
+    {
+      "time": 429.76666666660446,
+      "action": "place",
+      "unit": "archer",
+      "cell": [
+        13,
+        2
+      ],
+      "level": 1,
+      "gold_after": 21,
+      "wave": 7
+    },
+    {
+      "time": 501.6999999998724,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        13,
+        2
+      ],
+      "level": 2,
+      "gold_after": 48,
+      "wave": 8
+    },
+    {
+      "time": 576.1999999998046,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        13,
+        2
+      ],
+      "level": 3,
+      "gold_after": 21,
+      "wave": 9
+    },
+    {
+      "time": 645.0666666664087,
+      "action": "place",
+      "unit": "archer",
+      "cell": [
+        13,
+        4
+      ],
+      "level": 1,
+      "gold_after": 71,
+      "wave": 10
+    },
+    {
+      "time": 645.0666666664087,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        13,
+        4
+      ],
+      "level": 2,
+      "gold_after": 31,
+      "wave": 10
+    },
+    {
+      "time": 716.7666666663434,
+      "action": "upgrade",
+      "unit": "archer",
+      "cell": [
+        13,
+        4
+      ],
+      "level": 3,
+      "gold_after": 59,
+      "wave": 11
+    },
+    {
+      "time": 716.7666666663434,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        12,
+        2
+      ],
+      "level": 1,
+      "gold_after": 9,
+      "wave": 11
+    }
+  ],
+  "waves": [
+    {
+      "number": 1,
+      "started_at": 0.0,
+      "cleared_at": 44.666666666665414,
+      "called_early": true,
+      "early_bonus": 4,
+      "gold_start": 39,
+      "gold_end": 57,
+      "lives_start": 20,
+      "lives_end": 18,
+      "defenders": {
+        "archer 2": 1
+      },
+      "spawned": {
+        "goblin": 6
+      },
+      "killed": {
+        "goblin": 4
+      },
+      "escaped": {
+        "goblin": 2
+      },
+      "damage": {
+        "archer": 112
+      },
+      "kill_gold": 8,
+      "bonus": 10,
+      "units_down": 1
+    },
+    {
+      "number": 2,
+      "started_at": 44.666666666665414,
+      "cleared_at": 106.18333333332859,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 7,
+      "gold_end": 25,
+      "lives_start": 18,
+      "lives_end": 18,
+      "defenders": {
+        "archer 2": 1,
+        "warrior 1": 1
+      },
+      "spawned": {
+        "slime": 2,
+        "slime_medium": 4,
+        "slime_small": 8
+      },
+      "killed": {
+        "slime": 2,
+        "slime_medium": 4,
+        "slime_small": 8
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 120,
+        "warrior": 75
+      },
+      "kill_gold": 8,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 3,
+      "started_at": 106.18333333332859,
+      "cleared_at": 171.91666666669562,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 25,
+      "gold_end": 55,
+      "lives_start": 18,
+      "lives_end": 16,
+      "defenders": {
+        "archer 2": 1,
+        "warrior 1": 1
+      },
+      "spawned": {
+        "goblin": 6,
+        "slime": 2,
+        "slime_medium": 4,
+        "slime_small": 8
+      },
+      "killed": {
+        "goblin": 6,
+        "slime": 2,
+        "slime_medium": 4,
+        "slime_small": 6
+      },
+      "escaped": {
+        "slime_small": 2
+      },
+      "damage": {
+        "archer": 228,
+        "warrior": 75
+      },
+      "kill_gold": 20,
+      "bonus": 10,
+      "units_down": 1
+    },
+    {
+      "number": 4,
+      "started_at": 171.91666666669562,
+      "cleared_at": 237.50000000008114,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 25,
+      "gold_end": 70,
+      "lives_start": 16,
+      "lives_end": 16,
+      "defenders": {
+        "archer 2": 1,
+        "warrior 2": 1
+      },
+      "spawned": {
+        "goblin_fast": 6,
+        "slime": 3,
+        "slime_medium": 6,
+        "slime_small": 12
+      },
+      "killed": {
+        "goblin_fast": 6,
+        "slime": 3,
+        "slime_medium": 6,
+        "slime_small": 12
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 202,
+        "warrior": 168
+      },
+      "kill_gold": 30,
+      "bonus": 15,
+      "units_down": 0
+    },
+    {
+      "number": 5,
+      "started_at": 237.50000000008114,
+      "cleared_at": 312.1333333333781,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 10,
+      "gold_end": 45,
+      "lives_start": 16,
+      "lives_end": 16,
+      "defenders": {
+        "archer 2": 1,
+        "warrior 3": 1
+      },
+      "spawned": {
+        "slime": 5,
+        "slime_medium": 10,
+        "slime_small": 20
+      },
+      "killed": {
+        "slime": 5,
+        "slime_medium": 10,
+        "slime_small": 20
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 216,
+        "warrior": 324
+      },
+      "kill_gold": 20,
+      "bonus": 15,
+      "units_down": 1
+    },
+    {
+      "number": 6,
+      "started_at": 312.1333333333781,
+      "cleared_at": 359.03333333333546,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 45,
+      "gold_end": 90,
+      "lives_start": 16,
+      "lives_end": 16,
+      "defenders": {
+        "archer 2": 1,
+        "warrior 3": 1
+      },
+      "spawned": {
+        "goblin": 10,
+        "goblin_shield": 2
+      },
+      "killed": {
+        "goblin": 10,
+        "goblin_shield": 2
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 142,
+        "warrior": 152
+      },
+      "kill_gold": 30,
+      "bonus": 15,
+      "units_down": 0
+    },
+    {
+      "number": 7,
+      "started_at": 359.03333333333546,
+      "cleared_at": 429.7833333332711,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 20,
+      "gold_end": 86,
+      "lives_start": 16,
+      "lives_end": 16,
+      "defenders": {
+        "archer 3": 1,
+        "warrior 3": 1
+      },
+      "spawned": {
+        "slime": 8,
+        "goblin_fast": 8,
+        "slime_medium": 16,
+        "slime_small": 32
+      },
+      "killed": {
+        "goblin_fast": 8,
+        "slime": 8,
+        "slime_medium": 16,
+        "slime_small": 32
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 788,
+        "warrior": 312
+      },
+      "kill_gold": 56,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 8,
+      "started_at": 429.7833333332711,
+      "cleared_at": 501.716666666539,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 21,
+      "gold_end": 88,
+      "lives_start": 16,
+      "lives_end": 15,
+      "defenders": {
+        "archer 3": 1,
+        "warrior 3": 1,
+        "archer 1": 1
+      },
+      "spawned": {
+        "goblin_shield": 6,
+        "slime": 7,
+        "slime_medium": 14,
+        "slime_small": 26
+      },
+      "killed": {
+        "goblin_shield": 6,
+        "slime": 7,
+        "slime_medium": 13,
+        "slime_small": 26
+      },
+      "escaped": {
+        "slime_medium": 1
+      },
+      "damage": {
+        "archer": 814,
+        "warrior": 206
+      },
+      "kill_gold": 57,
+      "bonus": 10,
+      "units_down": 3
+    },
+    {
+      "number": 9,
+      "started_at": 501.716666666539,
+      "cleared_at": 576.2166666664713,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 48,
+      "gold_end": 91,
+      "lives_start": 15,
+      "lives_end": 4,
+      "defenders": {
+        "archer 3": 1,
+        "warrior 3": 1,
+        "archer 2": 1
+      },
+      "spawned": {
+        "slime": 12,
+        "slime_medium": 18,
+        "slime_small": 30
+      },
+      "killed": {
+        "slime": 9,
+        "slime_medium": 15,
+        "slime_small": 28
+      },
+      "escaped": {
+        "slime_small": 2,
+        "slime_medium": 3,
+        "slime": 3
+      },
+      "damage": {
+        "archer": 636,
+        "warrior": 252
+      },
+      "kill_gold": 33,
+      "bonus": 10,
+      "units_down": 4
+    },
+    {
+      "number": 10,
+      "started_at": 576.2166666664713,
+      "cleared_at": 645.0833333330753,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 21,
+      "gold_end": 136,
+      "lives_start": 4,
+      "lives_end": 4,
+      "defenders": {
+        "archer 3": 2,
+        "warrior 3": 1
+      },
+      "spawned": {
+        "goblin": 21,
+        "slime": 9,
+        "goblin_fast": 9,
+        "slime_medium": 18,
+        "slime_small": 36
+      },
+      "killed": {
+        "goblin_fast": 9,
+        "goblin": 21,
+        "slime": 9,
+        "slime_medium": 18,
+        "slime_small": 36
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 1497,
+        "warrior": 168
+      },
+      "kill_gold": 105,
+      "bonus": 10,
+      "units_down": 1
+    },
+    {
+      "number": 11,
+      "started_at": 645.0833333330753,
+      "cleared_at": 716.7833333330101,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 31,
+      "gold_end": 129,
+      "lives_start": 4,
+      "lives_end": 4,
+      "defenders": {
+        "archer 3": 2,
+        "warrior 3": 1,
+        "archer 2": 1
+      },
+      "spawned": {
+        "goblin_shield": 8,
+        "slime": 12,
+        "slime_medium": 24,
+        "slime_small": 48
+      },
+      "killed": {
+        "goblin_shield": 8,
+        "slime": 12,
+        "slime_medium": 24,
+        "slime_small": 48
+      },
+      "escaped": {},
+      "damage": {
+        "archer": 1451,
+        "warrior": 180
+      },
+      "kill_gold": 88,
+      "bonus": 10,
+      "units_down": 3
+    },
+    {
+      "number": 12,
+      "started_at": 716.7833333330101,
+      "cleared_at": null,
+      "called_early": true,
+      "early_bonus": 0,
+      "gold_start": 9,
+      "gold_end": null,
+      "lives_start": 4,
+      "lives_end": 0,
+      "defenders": {
+        "archer 3": 3,
+        "warrior 3": 1,
+        "warrior 1": 1
+      },
+      "spawned": {
+        "slime": 15,
+        "goblin": 25,
+        "goblin_shield": 10,
+        "goblin_fast": 13,
+        "slime_medium": 18,
+        "slime_small": 30
+      },
+      "killed": {
+        "goblin": 25,
+        "goblin_fast": 13,
+        "goblin_shield": 10,
+        "slime": 9,
+        "slime_medium": 15,
+        "slime_small": 25
+      },
+      "escaped": {
+        "slime_small": 4
+      },
+      "damage": {
+        "archer": 1896,
+        "warrior": 238
+      },
+      "kill_gold": 172,
+      "bonus": 0,
+      "units_down": 8
+    }
+  ]
+}

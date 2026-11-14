@@ -150,6 +150,10 @@ class Simulacao:
             return 2
         return 1
 
+    def campo_limpo(self) -> bool:
+        """Nenhuma onda em andamento e nenhum monstro em campo (não existe no jogo; usado pelo ambiente)."""
+        return not self._ondas_ativas and not self.monstros
+
     def esvaziar_eventos(self) -> list[dict]:
         eventos, self._eventos = self._eventos, []
         return eventos

@@ -5,6 +5,7 @@ description = "Rede neural (PPO) para dominar o tower defense Monstervale"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "gymnasium>=1.0",
     "numpy>=2.0",
 ]
 

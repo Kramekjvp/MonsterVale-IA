@@ -1,0 +1,222 @@
+{
+  "level": "level_03",
+  "started_at": "2026-11-14T20:02:31",
+  "result": "lost",
+  "duration": 104.43333333332869,
+  "lives_final": 0,
+  "gold_final": 27,
+  "stars": 0,
+  "actions": [
+    {
+      "time": 0.0,
+      "action": "place",
+      "unit": "spearman",
+      "cell": [
+        19,
+        7
+      ],
+      "level": 1,
+      "gold_after": 110,
+      "wave": 0
+    },
+    {
+      "time": 33.98333333333269,
+      "action": "upgrade",
+      "unit": "spearman",
+      "cell": [
+        19,
+        7
+      ],
+      "level": 2,
+      "gold_after": 84,
+      "wave": 1
+    },
+    {
+      "time": 33.98333333333269,
+      "action": "place",
+      "unit": "druid",
+      "cell": [
+        16,
+        8
+      ],
+      "level": 1,
+      "gold_after": 19,
+      "wave": 1
+    },
+    {
+      "time": 33.98333333333269,
+      "action": "dismiss",
+      "unit": "druid",
+      "cell": [
+        16,
+        8
+      ],
+      "level": 1,
+      "gold_after": 51,
+      "wave": 1
+    },
+    {
+      "time": 54.79999999999817,
+      "action": "place",
+      "unit": "spearman",
+      "cell": [
+        14,
+        1
+      ],
+      "level": 1,
+      "gold_after": 2,
+      "wave": 2
+    },
+    {
+      "time": 54.79999999999817,
+      "action": "dismiss",
+      "unit": "spearman",
+      "cell": [
+        19,
+        7
+      ],
+      "level": 2,
+      "gold_after": 52,
+      "wave": 2
+    },
+    {
+      "time": 54.79999999999817,
+      "action": "upgrade",
+      "unit": "spearman",
+      "cell": [
+        14,
+        1
+      ],
+      "level": 2,
+      "gold_after": 12,
+      "wave": 2
+    },
+    {
+      "time": 54.79999999999817,
+      "action": "dismiss",
+      "unit": "spearman",
+      "cell": [
+        14,
+        1
+      ],
+      "level": 2,
+      "gold_after": 62,
+      "wave": 2
+    },
+    {
+      "time": 87.7999999999963,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        5,
+        4
+      ],
+      "level": 1,
+      "gold_after": 25,
+      "wave": 3
+    }
+  ],
+  "waves": [
+    {
+      "number": 1,
+      "started_at": 0.0,
+      "cleared_at": 33.99999999999935,
+      "called_early": true,
+      "early_bonus": 4,
+      "gold_start": 114,
+      "gold_end": 124,
+      "lives_start": 20,
+      "lives_end": 14,
+      "defenders": {
+        "spearman 1": 1
+      },
+      "spawned": {
+        "goblin": 6
+      },
+      "killed": {},
+      "escaped": {
+        "goblin": 6
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 2,
+      "started_at": 33.99999999999935,
+      "cleared_at": 54.81666666666484,
+      "called_early": true,
+      "early_bonus": 1,
+      "gold_start": 52,
+      "gold_end": 62,
+      "lives_start": 14,
+      "lives_end": 10,
+      "defenders": {
+        "spearman 2": 1
+      },
+      "spawned": {
+        "wolf": 4
+      },
+      "killed": {},
+      "escaped": {
+        "wolf": 4
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 3,
+      "started_at": 54.81666666666484,
+      "cleared_at": 87.81666666666297,
+      "called_early": true,
+      "early_bonus": 3,
+      "gold_start": 65,
+      "gold_end": 75,
+      "lives_start": 10,
+      "lives_end": 1,
+      "defenders": {},
+      "spawned": {
+        "goblin": 6,
+        "wolf": 3
+      },
+      "killed": {},
+      "escaped": {
+        "wolf": 3,
+        "goblin": 6
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 4,
+      "started_at": 87.81666666666297,
+      "cleared_at": null,
+      "called_early": true,
+      "early_bonus": 2,
+      "gold_start": 27,
+      "gold_end": null,
+      "lives_start": 1,
+      "lives_end": 0,
+      "defenders": {
+        "warrior 1": 1
+      },
+      "spawned": {
+        "slime": 2,
+        "wolf": 4
+      },
+      "killed": {},
+      "escaped": {
+        "wolf": 1
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 0,
+      "units_down": 0
+    }
+  ]
+}

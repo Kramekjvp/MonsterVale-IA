@@ -68,6 +68,23 @@ class Mapa:
                         celulas.append(c)
         return celulas
 
+    def celulas_junto_a_estrada(self) -> list[Celula]:
+        """Células construíveis coladas na estrada, começando pelo trecho mais perto da vila.
+
+        Com duas rotas, intercala as células das duas para cobrir ambas.
+        """
+        celulas: list[Celula] = []
+        for i in range(len(self.rotas)):
+            for x, y in reversed(self.celulas_da_rota(i)):
+                for c in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)]:
+                    if c in self.construiveis and c not in celulas:
+                        celulas.append(c)
+        if len(self.rotas) > 1:
+            meio = len(celulas) // 2
+            a, b = celulas[:meio], celulas[meio:]
+            celulas = [c for par in zip(a, b) for c in par] + a[len(b):] + b[len(a):]
+        return celulas
+
     def dentro(self, celula: Celula) -> bool:
         x, y = celula
         return 0 <= x < self.colunas and 0 <= y < self.linhas

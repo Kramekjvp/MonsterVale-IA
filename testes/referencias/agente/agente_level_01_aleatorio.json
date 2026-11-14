@@ -1,0 +1,233 @@
+{
+  "level": "level_01",
+  "started_at": "2026-11-14T20:02:14",
+  "result": "lost",
+  "duration": 139.16666666666956,
+  "lives_final": 0,
+  "gold_final": 31,
+  "stars": 0,
+  "actions": [
+    {
+      "time": 0.0,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        2,
+        6
+      ],
+      "level": 1,
+      "gold_after": 70,
+      "wave": 0
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "upgrade",
+      "unit": "warrior",
+      "cell": [
+        2,
+        6
+      ],
+      "level": 2,
+      "gold_after": 58,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        12,
+        9
+      ],
+      "level": 1,
+      "gold_after": 8,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "dismiss",
+      "unit": "warrior",
+      "cell": [
+        2,
+        6
+      ],
+      "level": 2,
+      "gold_after": 48,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "upgrade",
+      "unit": "warrior",
+      "cell": [
+        12,
+        9
+      ],
+      "level": 2,
+      "gold_after": 18,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "dismiss",
+      "unit": "warrior",
+      "cell": [
+        12,
+        9
+      ],
+      "level": 2,
+      "gold_after": 58,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        3,
+        5
+      ],
+      "level": 1,
+      "gold_after": 8,
+      "wave": 1
+    },
+    {
+      "time": 36.949999999999186,
+      "action": "dismiss",
+      "unit": "warrior",
+      "cell": [
+        3,
+        5
+      ],
+      "level": 1,
+      "gold_after": 33,
+      "wave": 1
+    },
+    {
+      "time": 108.81666666666177,
+      "action": "place",
+      "unit": "warrior",
+      "cell": [
+        4,
+        2
+      ],
+      "level": 1,
+      "gold_after": 5,
+      "wave": 3
+    },
+    {
+      "time": 108.81666666666177,
+      "action": "dismiss",
+      "unit": "warrior",
+      "cell": [
+        4,
+        2
+      ],
+      "level": 1,
+      "gold_after": 30,
+      "wave": 3
+    }
+  ],
+  "waves": [
+    {
+      "number": 1,
+      "started_at": 0.0,
+      "cleared_at": 36.96666666666585,
+      "called_early": true,
+      "early_bonus": 4,
+      "gold_start": 74,
+      "gold_end": 88,
+      "lives_start": 20,
+      "lives_end": 17,
+      "defenders": {
+        "warrior 1": 1
+      },
+      "spawned": {
+        "goblin": 5
+      },
+      "killed": {
+        "goblin": 2
+      },
+      "escaped": {
+        "goblin": 3
+      },
+      "damage": {
+        "warrior": 50
+      },
+      "kill_gold": 4,
+      "bonus": 10,
+      "units_down": 1
+    },
+    {
+      "number": 2,
+      "started_at": 36.96666666666585,
+      "cleared_at": 73.49999999999712,
+      "called_early": true,
+      "early_bonus": 1,
+      "gold_start": 34,
+      "gold_end": 44,
+      "lives_start": 17,
+      "lives_end": 10,
+      "defenders": {},
+      "spawned": {
+        "goblin": 7
+      },
+      "killed": {},
+      "escaped": {
+        "goblin": 7
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 3,
+      "started_at": 73.49999999999712,
+      "cleared_at": 108.83333333332844,
+      "called_early": true,
+      "early_bonus": 1,
+      "gold_start": 45,
+      "gold_end": 55,
+      "lives_start": 10,
+      "lives_end": 2,
+      "defenders": {},
+      "spawned": {
+        "goblin": 6,
+        "goblin_fast": 2
+      },
+      "killed": {},
+      "escaped": {
+        "goblin_fast": 2,
+        "goblin": 6
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 10,
+      "units_down": 0
+    },
+    {
+      "number": 4,
+      "started_at": 108.83333333332844,
+      "cleared_at": null,
+      "called_early": true,
+      "early_bonus": 1,
+      "gold_start": 31,
+      "gold_end": null,
+      "lives_start": 2,
+      "lives_end": 0,
+      "defenders": {},
+      "spawned": {
+        "goblin": 10
+      },
+      "killed": {},
+      "escaped": {
+        "goblin": 2
+      },
+      "damage": {},
+      "kill_gold": 0,
+      "bonus": 0,
+      "units_down": 0
+    }
+  ]
+}

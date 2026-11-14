@@ -43,18 +43,7 @@ def gerar_roteiro(
     cada `intervalo_onda` quadros (240 = 4 s, agressivo; 1500 = 25 s, calmo).
     """
     mapa = Mapa.carregar(id_fase)
-    # Células construíveis coladas na estrada, começando pelo trecho mais perto da vila.
-    celulas: list[tuple[int, int]] = []
-    for i in range(len(mapa.rotas)):
-        for x, y in reversed(mapa.celulas_da_rota(i)):
-            for c in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)]:
-                if c in mapa.construiveis and c not in celulas:
-                    celulas.append(c)
-    # Duas rotas: intercala as células das duas para cobrir ambas.
-    if len(mapa.rotas) > 1:
-        meio = len(celulas) // 2
-        a, b = celulas[:meio], celulas[meio:]
-        celulas = [c for par in zip(a, b) for c in par] + a[len(b):] + b[len(a):]
+    celulas = mapa.celulas_junto_a_estrada()
     acoes: list[list] = [[5, "gold", ouro_extra]] if ouro_extra else []
     proxima_celula = 0
     usadas: list[tuple[int, int]] = []
