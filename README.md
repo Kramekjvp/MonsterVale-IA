@@ -10,7 +10,7 @@ O plano completo, com as 12 decisões de projeto e o roteiro, está em [`docs/pl
 |---|---|
 | M0 Repositório e ambiente | ✅ |
 | M1 Mapas exportados do jogo | ✅ |
-| M2 Simulação em Python com paridade | ⏳ rota ✅ |
+| M2 Simulação em Python com paridade | ⏳ rota ✅ monstro ✅ humano ✅ |
 | M3 Ambiente Gymnasium | |
 | M4 Linhas de base | |
 | M5 PPO + mini-TD | |

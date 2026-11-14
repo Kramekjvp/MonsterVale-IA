@@ -20,6 +20,7 @@ godot --headless --path jogo --import     # uma vez, depois de clonar
 godot --headless --path jogo -s ../ferramentas/exportar_mapas.gd -- ../dados/mapas
 # respostas douradas (o Godot calcula, o Python tem que bater bit a bit)
 godot --headless --path jogo -s ../ferramentas/referencias_rota.gd -- ../testes/referencias/rota.json
+godot --headless --path jogo -s ../ferramentas/referencias_entidades.gd -- ../testes/referencias/entidades.json
 ```
 
 ## Port da simulação
