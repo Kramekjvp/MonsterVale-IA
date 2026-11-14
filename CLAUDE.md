@@ -18,6 +18,15 @@ uv sync                                   # ambiente Python
 uv run pytest                             # testes
 godot --headless --path jogo --import     # uma vez, depois de clonar
 godot --headless --path jogo -s ../ferramentas/exportar_mapas.gd -- ../dados/mapas
+# respostas douradas (o Godot calcula, o Python tem que bater bit a bit)
+godot --headless --path jogo -s ../ferramentas/referencias_rota.gd -- ../testes/referencias/rota.json
 ```
+
+## Port da simulação
+
+- Cada arquivo de `jogo/src/core/` vira um módulo em `monstervale_ia/` (route.gd → rota.py ...).
+- Contas com `Vector2` passam por `monstervale_ia/vetor.py`, que copia o C++ do Godot em float32.
+- `float` do GDScript é float64: distâncias percorridas, tempos e cooldowns ficam em float do Python.
+- Paridade é igualdade exata, sem tolerância. Se um teste dourado falhar, procure a operação que mudou de precisão.
 
 Godot fixado em 4.7.2 (mesma versão do jogo).

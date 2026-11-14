@@ -25,7 +25,8 @@ func _init() -> void:
 	for id: String in LEVEL_IDS:
 		var path := out_dir.path_join("%s.json" % id)
 		var file := FileAccess.open(path, FileAccess.WRITE)
-		file.store_string(JSON.stringify(_export(id), "  ", false))
+		# full_precision: grava todos os dígitos, para o Python reler o mesmo float32.
+		file.store_string(JSON.stringify(_export(id), "  ", false, true))
 		file.close()
 		print("exportado: ", path)
 	quit()
