@@ -1,0 +1,3 @@
+[submodule "jogo"]
+	path = jogo
+	url = https://github.com/Brenaki/Monstervale.git
