@@ -10,8 +10,8 @@ O plano completo, com as 12 decisões de projeto e o roteiro, está em [`docs/pl
 |---|---|
 | M0 Repositório e ambiente | ✅ |
 | M1 Mapas exportados do jogo | ✅ |
-| M2 Simulação em Python com paridade | ⏳ rota ✅ entidades ✅ simulação ✅ · falta: partidas humanas |
-| M3 Ambiente Gymnasium | |
+| M2 Simulação em Python com paridade | ✅ |
+| M3 Ambiente Gymnasium | ⏳ |
 | M4 Linhas de base | |
 | M5 PPO + mini-TD | |
 | M6 Fase 1 dominada | |
@@ -26,7 +26,7 @@ Precisa de Python 3.11+, [uv](https://docs.astral.sh/uv/) e [Godot 4.7.2](https:
 git clone --recurse-submodules https://github.com/Kramekjvp/MonsterVale-IA.git
 cd MonsterVale-IA
 uv sync
-uv run pytest
+uv run pytest -m 'not lento'   # rápidos; sem o filtro roda também a paridade de partidas inteiras (~3 min)
 ```
 
 Se já tinha clonado sem `--recurse-submodules`: `git submodule update --init`.

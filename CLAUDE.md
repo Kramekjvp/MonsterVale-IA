@@ -15,7 +15,8 @@ Projeto pessoal de aprendizado: uma rede neural (PPO com máscara de ações) pa
 
 ```bash
 uv sync                                   # ambiente Python
-uv run pytest                             # testes
+uv run pytest -m 'not lento'              # testes rápidos (segundos)
+uv run pytest                             # tudo, inclusive paridade de partidas (~3 min)
 godot --headless --path jogo --import     # uma vez, depois de clonar
 godot --headless --path jogo -s ../ferramentas/exportar_mapas.gd -- ../dados/mapas
 # respostas douradas (o Godot calcula, o Python tem que bater bit a bit)
@@ -24,6 +25,7 @@ godot --headless --path jogo -s ../ferramentas/referencias_entidades.gd -- ../te
 godot --headless --path jogo -s ../ferramentas/referencias_ordenacao.gd -- ../testes/referencias/ordenacao.json
 uv run python ferramentas/gerar_roteiros.py   # roteiros de ações para a paridade da simulação
 godot --headless --path jogo -s ../ferramentas/executar_roteiro.gd -- ../testes/referencias/roteiros_entrada.json ../testes/referencias/roteiros.json
+godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/partidas.json   # ~4 min
 ```
 
 ## Port da simulação

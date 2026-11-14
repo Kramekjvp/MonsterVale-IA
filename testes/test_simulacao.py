@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.lento
+
 from monstervale_ia.dados_jogo import carregar_catalogo, carregar_fase
 from monstervale_ia.roteiro import executar
 

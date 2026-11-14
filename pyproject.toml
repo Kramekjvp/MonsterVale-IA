@@ -22,3 +22,4 @@ packages = ["monstervale_ia"]
 
 [tool.pytest.ini_options]
 testpaths = ["testes"]
+markers = ["lento: paridade de partidas inteiras (minutos); pule com -m 'not lento'"]
