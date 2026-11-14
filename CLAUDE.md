@@ -21,6 +21,9 @@ godot --headless --path jogo -s ../ferramentas/exportar_mapas.gd -- ../dados/map
 # respostas douradas (o Godot calcula, o Python tem que bater bit a bit)
 godot --headless --path jogo -s ../ferramentas/referencias_rota.gd -- ../testes/referencias/rota.json
 godot --headless --path jogo -s ../ferramentas/referencias_entidades.gd -- ../testes/referencias/entidades.json
+godot --headless --path jogo -s ../ferramentas/referencias_ordenacao.gd -- ../testes/referencias/ordenacao.json
+uv run python ferramentas/gerar_roteiros.py   # roteiros de ações para a paridade da simulação
+godot --headless --path jogo -s ../ferramentas/executar_roteiro.gd -- ../testes/referencias/roteiros_entrada.json ../testes/referencias/roteiros.json
 ```
 
 ## Port da simulação
@@ -28,6 +31,9 @@ godot --headless --path jogo -s ../ferramentas/referencias_entidades.gd -- ../te
 - Cada arquivo de `jogo/src/core/` vira um módulo em `monstervale_ia/` (route.gd → rota.py ...).
 - Contas com `Vector2` passam por `monstervale_ia/vetor.py`, que copia o C++ do Godot em float32.
 - `float` do GDScript é float64: distâncias percorridas, tempos e cooldowns ficam em float do Python.
+- Ordem das etapas, ordem dos laços e critérios de desempate do GDScript são parte do comportamento: não "melhore".
+- `sort_custom` do Godot não é estável: use `ordenar_como_godot` (godot.py), nunca `sorted()`.
+- Os nomes de estado ("playing", "won", "lost") e de eventos ("unit_placed"...) ficam iguais aos do jogo.
 - Paridade é igualdade exata, sem tolerância. Se um teste dourado falhar, procure a operação que mudou de precisão.
 
 Godot fixado em 4.7.2 (mesma versão do jogo).

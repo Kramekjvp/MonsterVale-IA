@@ -51,3 +51,43 @@ def mover_em_direcao(de: Vetor, para: Vetor, passo: float) -> Vetor:
         de[0] + vd[0] / tamanho * passo,
         de[1] + vd[1] / tamanho * passo,
     )
+
+
+def somar(a: Vetor, b: Vetor) -> Vetor:
+    return a[0] + b[0], a[1] + b[1]
+
+
+def subtrair(a: Vetor, b: Vetor) -> Vetor:
+    return a[0] - b[0], a[1] - b[1]
+
+
+def escalar(v: Vetor, k: float) -> Vetor:
+    """Vector2 * real_t: o escalar vira float32 antes de multiplicar."""
+    k = f32(k)
+    return v[0] * k, v[1] * k
+
+
+def direcao_para(de: Vetor, para: Vetor) -> Vetor:
+    """Vector2::direction_to(): vetor unitário de `de` até `para` (normalize())."""
+    x = para[0] - de[0]
+    y = para[1] - de[1]
+    q = x * x + y * y  # length_squared
+    if q == 0:
+        return f32(0.0), f32(0.0)
+    tamanho = np.sqrt(q)
+    return x / tamanho, y / tamanho
+
+
+def ponto_mais_proximo_do_segmento(p: Vetor, a: Vetor, b: Vetor) -> Vetor:
+    """Geometry2D.get_closest_point_to_segment(), core/math/geometry_2d.h."""
+    px, py = p[0] - a[0], p[1] - a[1]
+    nx, ny = b[0] - a[0], b[1] - a[1]
+    l2 = nx * nx + ny * ny
+    if l2 < f32(1e-20):
+        return a
+    d = (nx * px + ny * py) / l2
+    if d <= f32(0.0):
+        return a
+    if d >= f32(1.0):
+        return b
+    return a[0] + nx * d, a[1] + ny * d
