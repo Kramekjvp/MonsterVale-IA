@@ -1,0 +1,74 @@
+[
+  {
+    "fase": "level_02",
+    "agente": "aleat\u00f3rio",
+    "partidas": 30,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 3.466666666666667,
+    "retorno_medio": -2.0,
+    "minutos_medio": 3.188435185185185
+  },
+  {
+    "fase": "level_02",
+    "agente": "heur\u00edstico",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 12.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 13.105833333333333
+  },
+  {
+    "fase": "level_02",
+    "agente": "heur\u00edstico, perturbado",
+    "partidas": 10,
+    "vitorias": 0.1,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.1,
+    "vidas_media": 0.2,
+    "onda_media": 11.0,
+    "retorno_medio": -1.7399999999999998,
+    "minutos_medio": 11.900611111111111
+  },
+  {
+    "fase": "level_02",
+    "agente": "s\u00f3 arqueiros",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 7.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 6.948055555555555
+  },
+  {
+    "fase": "level_02",
+    "agente": "s\u00f3 guerreiros",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 9.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 9.798055555555555
+  },
+  {
+    "fase": "level_02",
+    "agente": "s\u00f3 magos",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 5.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 5.012222222222222
+  }
+]

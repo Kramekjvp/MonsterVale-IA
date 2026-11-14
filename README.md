@@ -12,8 +12,8 @@ O plano completo, com as 12 decisões de projeto e o roteiro, está em [`docs/pl
 | M1 Mapas exportados do jogo | ✅ |
 | M2 Simulação em Python com paridade | ✅ |
 | M3 Ambiente Gymnasium | ✅ |
-| M4 Linhas de base | ⏳ |
-| M5 PPO + mini-TD | |
+| M4 Linhas de base ([tabela](docs/linhas_de_base.md)) | ✅ |
+| M5 PPO + mini-TD | ⏳ |
 | M6 Fase 1 dominada | |
 | M7 Assistir ao agente no Godot | |
 | M8 Fases 2 a 5 | |
@@ -48,6 +48,7 @@ dados/mapas/       mapas das 5 fases exportados do jogo
 ferramentas/       scripts que rodam dentro do Godot
 monstervale_ia/    código Python: mapa, simulação, ambiente, agente
 testes/            testes (pytest)
+resultados/        resultados de avaliações (linhas de base, treinos)
 docs/              plano e notas de aprendizado
 ```
 

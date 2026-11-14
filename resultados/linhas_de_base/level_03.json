@@ -1,0 +1,98 @@
+[
+  {
+    "fase": "level_03",
+    "agente": "aleat\u00f3rio",
+    "partidas": 30,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 4.1,
+    "retorno_medio": -2.0,
+    "minutos_medio": 1.9411203703703706
+  },
+  {
+    "fase": "level_03",
+    "agente": "heur\u00edstico",
+    "partidas": 1,
+    "vitorias": 1.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 2.0,
+    "vidas_media": 12.0,
+    "onda_media": 12.0,
+    "retorno_medio": 1.6,
+    "minutos_medio": 7.070555555555556
+  },
+  {
+    "fase": "level_03",
+    "agente": "heur\u00edstico, perturbado",
+    "partidas": 10,
+    "vitorias": 0.9,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 1.3,
+    "vidas_media": 7.3,
+    "onda_media": 12.0,
+    "retorno_medio": 0.8149999999999998,
+    "minutos_medio": 7.5375
+  },
+  {
+    "fase": "level_03",
+    "agente": "s\u00f3 arqueiros",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 6.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 3.2855555555555553
+  },
+  {
+    "fase": "level_03",
+    "agente": "s\u00f3 guerreiros",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 12.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 7.991944444444444
+  },
+  {
+    "fase": "level_03",
+    "agente": "s\u00f3 magos",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 9.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 4.834444444444444
+  },
+  {
+    "fase": "level_03",
+    "agente": "s\u00f3 lanceiros",
+    "partidas": 1,
+    "vitorias": 1.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 1.0,
+    "vidas_media": 6.0,
+    "onda_media": 12.0,
+    "retorno_medio": 0.8,
+    "minutos_medio": 7.0175
+  },
+  {
+    "fase": "level_03",
+    "agente": "s\u00f3 druidas",
+    "partidas": 1,
+    "vitorias": 0.0,
+    "tres_estrelas": 0.0,
+    "estrelas_media": 0.0,
+    "vidas_media": 0.0,
+    "onda_media": 4.0,
+    "retorno_medio": -2.0,
+    "minutos_medio": 2.388611111111111
+  }
+]

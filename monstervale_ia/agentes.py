@@ -39,9 +39,13 @@ def aleatorio(chance_chamar: float = 0.3) -> Agente:
     return agir
 
 
-def heuristico() -> Agente:
+def heuristico(classes: list[str] | None = None) -> Agente:
     """Melhora quem for mais barato de melhorar; senão, posiciona colado na estrada
-    (perto da vila primeiro), alternando as classes liberadas; senão, chama a onda."""
+    (perto da vila primeiro), alternando as classes liberadas; senão, chama a onda.
+
+    Com `classes`, só usa essas (ex.: ["archer"] imita o robô "só arqueiros" dos
+    testes de balanceamento do jogo).
+    """
     estado = {"compras": 0}
 
     def agir(env: AmbienteMonstervale, rng: np.random.Generator) -> int:
@@ -53,7 +57,12 @@ def heuristico() -> Agente:
         ]
         if melhorias:
             return indice_acao(TIPO_MELHORAR, *min(melhorias)[1])
-        liberadas = [k for k, c in enumerate(CLASSES) if c in sim.classes_disponiveis()]
+        liberadas = [
+            k for k, c in enumerate(CLASSES)
+            if c in sim.classes_disponiveis() and (classes is None or c in classes)
+        ]
+        if not liberadas:
+            return ACAO_CHAMAR
         inicio = estado["compras"] % len(liberadas)
         for k in liberadas[inicio:] + liberadas[:inicio]:
             for celula in env.mapa.celulas_junto_a_estrada():

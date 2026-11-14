@@ -28,6 +28,7 @@ godot --headless --path jogo -s ../ferramentas/executar_roteiro.gd -- ../testes/
 godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/partidas.json   # ~4 min
 uv run python ferramentas/gerar_partidas_agente.py   # partidas do ambiente exportadas no formato do jogo
 godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/agente.json ../testes/referencias/agente
+uv run python ferramentas/linhas_de_base.py level_01 ... --processos 8 && uv run python ferramentas/linhas_de_base.py --tabela
 ```
 
 ## Port da simulação
