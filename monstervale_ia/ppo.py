@@ -23,9 +23,13 @@ https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
+import os
 import time
+import traceback
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
+from multiprocessing.connection import wait
 from pathlib import Path
 
 import gymnasium as gym
@@ -56,6 +60,9 @@ class ConfigPPO:
     dispositivo: str = "auto"  # "auto", "cpu" ou "cuda"
     pasta: str = "resultados/treinos/teste"
     avaliar_a_cada: int = 0  # atualizações entre avaliações (0 = nunca)
+    salvar_a_cada: int = 0  # atualizações entre checkpoints (0 = só no fim)
+    retomar: bool = False  # continua de pasta/checkpoint.pt, se existir
+    chave_melhor: str | None = None  # chave da avaliação (maior = melhor) que grava melhor_rede.pt
     rede: dict = field(default_factory=dict)  # argumentos extras de RedePolitica
 
     @property
@@ -110,15 +117,158 @@ def vantagens_gae(
     return vantagens, vantagens + valores
 
 
+CHAVES_FINAIS = ("estrelas", "vidas", "onda", "tracado")
+
+
+def _trabalhador(conexao, fabrica_env, semente: int) -> None:
+    """Processo de UM ambiente: recebe ações, faz step e o autoreset, devolve tudo de uma vez."""
+    try:
+        env = fabrica_env()
+        obs, _ = env.reset(seed=semente)
+        conexao.send((obs, np.asarray(env.action_masks(), dtype=bool)))
+        while True:
+            comando, acao = conexao.recv()
+            if comando == "fechar":
+                break
+            obs, r, term, trunc, info = env.step(acao)
+            info_final = None
+            if term or trunc:
+                info_final = {c: float(info[c]) for c in CHAVES_FINAIS if c in info}
+                obs, _ = env.reset()  # autoreset (SAME_STEP): o obs devolvido já é o da próxima partida
+            conexao.send((obs, np.asarray(env.action_masks(), dtype=bool), float(r), bool(term), bool(trunc), info_final))
+        env.close()
+    except BaseException:  # noqa: BLE001 - o principal precisa saber por que o trabalhador morreu
+        try:
+            conexao.send(("erro", traceback.format_exc()))
+        except Exception:
+            pass
+    finally:
+        conexao.close()
+
+
+class ColetorAssincrono:
+    """Um processo por ambiente; cada ambiente anda no seu ritmo (sem passo travado).
+
+    Um passo "chamar onda" roda milhares de quadros; um passo de construir é instantâneo.
+    Num vetor travado (AsyncVectorEnv) todos esperam o mais lento. Aqui, quem fica pronto
+    é atendido (inferência em lote só dos prontos) e já recebe a próxima ação. Cada
+    ambiente faz exatamente T passos por coleta; quem termina antes espera parado, com a
+    última observação guardada (serve de s_{T} para o GAE). A rede não muda durante a
+    coleta, então continua on-policy.
+    """
+
+    def __init__(self, fabrica_env: Callable[[], gym.Env], n: int, semente: int) -> None:
+        self.n = n
+        self.conexoes: list = []
+        self.processos: list = []
+        try:
+            ctx = mp.get_context("spawn")
+            for i in range(n):
+                pai, filho = ctx.Pipe()
+                processo = ctx.Process(target=_trabalhador, args=(filho, fabrica_env, semente + i), daemon=True)
+                processo.start()
+                filho.close()
+                self.conexoes.append(pai)
+                self.processos.append(processo)
+            iniciais = [self._receber(c) for c in self.conexoes]
+        except BaseException:
+            self.fechar()
+            raise
+        self.grid = np.stack([o["grid"] for o, _ in iniciais]).astype(np.float32)
+        self.glob = np.stack([o["global"] for o, _ in iniciais]).astype(np.float32)
+        self.mascara = np.stack([m for _, m in iniciais])
+        self.retorno_corrente = np.zeros(n)
+        self.passos_corrente = np.zeros(n, dtype=int)
+
+    @staticmethod
+    def _receber(conexao):
+        try:
+            msg = conexao.recv()
+        except EOFError as e:
+            raise RuntimeError("um processo de ambiente morreu sem avisar") from e
+        if len(msg) == 2 and isinstance(msg[0], str) and msg[0] == "erro":
+            raise RuntimeError(f"erro num processo de ambiente:\n{msg[1]}")
+        return msg
+
+    def coletar(self, rede, T, grids, globais, mascaras, acoes, logprobs, recompensas, terminados, valores, disp):
+        """Enche os buffers [T, N]. Devolve as partidas que acabaram durante a coleta."""
+        contador = np.zeros(self.n, dtype=int)
+        prontos = list(range(self.n))
+        pendentes: dict = {}
+        partidas: list[dict] = []
+        while True:
+            if prontos:
+                idx = np.array(prontos)
+                grid, glob = _tensores({"grid": self.grid[idx], "global": self.glob[idx]}, disp)
+                mascara = torch.as_tensor(self.mascara[idx], device=disp)
+                with torch.no_grad():
+                    dist, valor = rede.distribuicao(grid, glob, mascara)
+                    acao = dist.sample()
+                ts = torch.as_tensor(contador[idx], device=disp)
+                ix = torch.as_tensor(idx, device=disp)
+                grids[ts, ix], globais[ts, ix], mascaras[ts, ix] = grid, glob, mascara
+                acoes[ts, ix], logprobs[ts, ix] = acao, dist.log_prob(acao)
+                valores[contador[idx], idx] = valor.cpu().numpy()
+                for i, a in zip(idx, acao.cpu().numpy()):
+                    self.conexoes[i].send(("passo", int(a)))
+                    pendentes[self.conexoes[i]] = int(i)
+                prontos = []
+            if not pendentes:
+                break
+            for conexao in wait(list(pendentes)):
+                i = pendentes.pop(conexao)
+                obs, mascara_i, r, term, trunc, info_final = self._receber(conexao)
+                t = contador[i]
+                fim = term or trunc
+                recompensas[t, i], terminados[t, i] = r, fim
+                self.grid[i], self.glob[i], self.mascara[i] = obs["grid"], obs["global"], mascara_i
+                self.retorno_corrente[i] += r
+                self.passos_corrente[i] += 1
+                if fim:
+                    partida = {"retorno": float(self.retorno_corrente[i]), "passos": int(self.passos_corrente[i])}
+                    partida.update(info_final or {})
+                    partidas.append(partida)
+                    self.retorno_corrente[i] = 0.0
+                    self.passos_corrente[i] = 0
+                contador[i] += 1
+                if contador[i] < T:
+                    prontos.append(i)
+        return partidas
+
+    def observacao_atual(self, disp):
+        return _tensores({"grid": self.grid, "global": self.glob}, disp)
+
+    def fechar(self) -> None:
+        for c in self.conexoes:
+            try:
+                c.send(("fechar", None))
+            except Exception:
+                pass
+        for p in self.processos:
+            p.join(timeout=5)
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
+        for c in self.conexoes:
+            try:
+                c.close()
+            except Exception:
+                pass
+        self.conexoes, self.processos = [], []
+
+
 class Registro:
     """Escreve métricas no TensorBoard e num CSV simples."""
 
-    def __init__(self, pasta: Path) -> None:
+    def __init__(self, pasta: Path, anexar: bool = False) -> None:
         from torch.utils.tensorboard import SummaryWriter
 
         self.escritor = SummaryWriter(str(pasta))
-        self.csv = (pasta / "metricas.csv").open("w", encoding="utf-8")
-        self.csv.write("passo,nome,valor\n")
+        arquivo = pasta / "metricas.csv"
+        novo = not anexar or not arquivo.exists() or arquivo.stat().st_size == 0
+        self.csv = arquivo.open("a" if anexar else "w", encoding="utf-8")  # retomar anexa, não apaga o histórico
+        if novo:
+            self.csv.write("passo,nome,valor\n")
 
     def __call__(self, nome: str, valor: float, passo: int) -> None:
         self.escritor.add_scalar(nome, valor, passo)
@@ -129,151 +279,215 @@ class Registro:
         self.csv.close()
 
 
+def _salvar_checkpoint(pasta: Path, rede, otimizador, atualizacao: int, passo_global: int, melhor, config) -> None:
+    estado = {
+        "rede": rede.state_dict(), "otimizador": otimizador.state_dict(),
+        "atualizacao": atualizacao, "passo_global": passo_global, "melhor": melhor,
+        "rng_numpy": np.random.get_state(), "rng_torch": torch.get_rng_state(),
+        "rng_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        "config": asdict(config),
+    }
+    temporario = pasta / "checkpoint.tmp"
+    torch.save(estado, temporario)
+    os.replace(temporario, pasta / "checkpoint.pt")  # troca atômica: queda no meio não corrompe
+
+
 def treinar(
     fabrica_env: Callable[[], gym.Env],
     tipos_por_celula: int,
     config: ConfigPPO,
     avaliacao: Callable[[RedePolitica, int], dict] | None = None,
+    retomar: bool = False,
 ) -> tuple[RedePolitica, list[dict]]:
-    """Treina uma política e devolve (rede, histórico de atualizações)."""
+    """Treina uma política e devolve (rede, histórico de atualizações).
+
+    Com retomar=True (ou config.retomar) e um checkpoint.pt na pasta, continua dali.
+    """
     pasta = Path(config.pasta)
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "config.json").write_text(json.dumps(asdict(config), indent=2), encoding="utf-8")
-    registro = Registro(pasta)
+    caminho_checkpoint = pasta / "checkpoint.pt"
+    checkpoint = None
+    if (retomar or config.retomar) and caminho_checkpoint.exists():
+        checkpoint = torch.load(caminho_checkpoint, map_location="cpu", weights_only=False)
 
     np.random.seed(config.semente)
     torch.manual_seed(config.semente)
     disp = escolher_dispositivo(config.dispositivo)
-
-    vetor = gym.vector.AsyncVectorEnv if config.assincrono else gym.vector.SyncVectorEnv
-    # SAME_STEP: quando uma partida acaba, o próprio step já devolve o início da próxima.
-    envs = vetor([fabrica_env] * config.n_ambientes, autoreset_mode=gym.vector.AutoresetMode.SAME_STEP)
-    rede = criar_rede(envs.envs[0] if not config.assincrono else fabrica_env(), tipos_por_celula, **config.rede).to(disp)
-    otimizador = torch.optim.Adam(rede.parameters(), lr=config.taxa_aprendizado, eps=1e-5)
-
     T, N = config.passos_por_coleta, config.n_ambientes
-    espaco = envs.single_observation_space
-    grids = torch.zeros((T, N, *espaco["grid"].shape), device=disp)
-    globais = torch.zeros((T, N, *espaco["global"].shape), device=disp)
-    n_acoes = envs.single_action_space.n
-    mascaras = torch.zeros((T, N, n_acoes), dtype=torch.bool, device=disp)
-    acoes = torch.zeros((T, N), dtype=torch.long, device=disp)
-    logprobs = torch.zeros((T, N), device=disp)
-    recompensas = np.zeros((T, N), dtype=np.float32)
-    terminados = np.zeros((T, N), dtype=np.float32)
-    valores = np.zeros((T, N), dtype=np.float32)
+    atualizacao_inicial = checkpoint["atualizacao"] if checkpoint else 0
+    # Ao retomar, os ambientes recomeçam com sementes novas (não repetem as partidas do início).
+    semente_envs = config.semente + 1000 * atualizacao_inicial
 
-    obs, _ = envs.reset(seed=config.semente)
-    grid, glob = _tensores(obs, disp)
-    mascara = torch.as_tensor(np.stack(envs.call("action_masks")), device=disp)
-    retorno_corrente = np.zeros(N)
-    passos_corrente = np.zeros(N, dtype=int)
-    passo_global = 0
-    inicio = time.time()
-    historico: list[dict] = []
-    partidas_recentes: list[dict] = []
+    registro = Registro(pasta, anexar=checkpoint is not None)
+    coletor = envs = None
+    try:
+        if config.assincrono:
+            amostra = fabrica_env()
+            espaco, n_acoes = amostra.observation_space, amostra.action_space.n
+            rede = criar_rede(amostra, tipos_por_celula, **config.rede).to(disp)
+            amostra.close()
+        else:
+            # SAME_STEP: quando uma partida acaba, o próprio step já devolve o início da próxima.
+            envs = gym.vector.SyncVectorEnv([fabrica_env] * N, autoreset_mode=gym.vector.AutoresetMode.SAME_STEP)
+            espaco, n_acoes = envs.single_observation_space, envs.single_action_space.n
+            rede = criar_rede(envs.envs[0], tipos_por_celula, **config.rede).to(disp)
+        otimizador = torch.optim.Adam(rede.parameters(), lr=config.taxa_aprendizado, eps=1e-5)
 
-    for atualizacao in range(1, config.atualizacoes + 1):
-        if config.anelar_taxa:
-            fracao = 1.0 - (atualizacao - 1) / config.atualizacoes
-            otimizador.param_groups[0]["lr"] = fracao * config.taxa_aprendizado
+        passo_global = 0
+        melhor = None  # melhor valor de config.chave_melhor visto na avaliação
+        if checkpoint:
+            rede.load_state_dict(checkpoint["rede"])
+            otimizador.load_state_dict(checkpoint["otimizador"])
+            passo_global, melhor = checkpoint["passo_global"], checkpoint["melhor"]
+            np.random.set_state(checkpoint["rng_numpy"])
+            torch.set_rng_state(checkpoint["rng_torch"])
+            if checkpoint["rng_cuda"] is not None and torch.cuda.is_available():
+                torch.cuda.set_rng_state_all(checkpoint["rng_cuda"])
 
-        # 1. COLETA ---------------------------------------------------------------
-        for t in range(T):
-            passo_global += N
-            grids[t], globais[t], mascaras[t] = grid, glob, mascara
-            with torch.no_grad():
-                dist, valor = rede.distribuicao(grid, glob, mascara)
-                acao = dist.sample()
-            acoes[t], logprobs[t] = acao, dist.log_prob(acao)
-            valores[t] = valor.cpu().numpy()
+        grids = torch.zeros((T, N, *espaco["grid"].shape), device=disp)
+        globais = torch.zeros((T, N, *espaco["global"].shape), device=disp)
+        mascaras = torch.zeros((T, N, n_acoes), dtype=torch.bool, device=disp)
+        acoes = torch.zeros((T, N), dtype=torch.long, device=disp)
+        logprobs = torch.zeros((T, N), device=disp)
+        recompensas = np.zeros((T, N), dtype=np.float32)
+        terminados = np.zeros((T, N), dtype=np.float32)
+        valores = np.zeros((T, N), dtype=np.float32)
 
-            obs, r, term, trunc, info = envs.step(acao.cpu().numpy())
-            fim = np.logical_or(term, trunc)
-            recompensas[t], terminados[t] = r, fim
-            retorno_corrente += r
-            passos_corrente += 1
-            for i in np.flatnonzero(fim):
-                partida = {"retorno": float(retorno_corrente[i]), "passos": int(passos_corrente[i])}
-                final = info.get("final_info", {})
-                for chave in ("estrelas", "vidas", "onda", "tracado"):
-                    if chave in final and final.get(f"_{chave}", np.ones(N, bool))[i]:
-                        partida[chave] = float(final[chave][i])
-                partidas_recentes.append(partida)
-                retorno_corrente[i] = 0.0
-                passos_corrente[i] = 0
+        if config.assincrono:
+            coletor = ColetorAssincrono(fabrica_env, N, semente_envs)
+        else:
+            obs, _ = envs.reset(seed=semente_envs)
             grid, glob = _tensores(obs, disp)
             mascara = torch.as_tensor(np.stack(envs.call("action_masks")), device=disp)
+            retorno_corrente = np.zeros(N)
+            passos_corrente = np.zeros(N, dtype=int)
+        passo_inicial = passo_global
+        inicio = time.time()
+        historico: list[dict] = []
+        partidas_recentes: list[dict] = []
 
-        # 2. VANTAGEM (GAE) ---------------------------------------------------------
-        with torch.no_grad():
-            _, valor_seguinte = rede(grid, glob)
-        vantagens, retornos = vantagens_gae(
-            recompensas, valores, terminados, valor_seguinte.cpu().numpy(), config.gamma, config.lambda_gae
-        )
+        for atualizacao in range(atualizacao_inicial + 1, config.atualizacoes + 1):
+            if config.anelar_taxa:
+                fracao = 1.0 - (atualizacao - 1) / config.atualizacoes
+                otimizador.param_groups[0]["lr"] = fracao * config.taxa_aprendizado
 
-        # 3. ATUALIZAÇÃO ---------------------------------------------------------------
-        b_grid, b_glob = grids.reshape(-1, *grids.shape[2:]), globais.reshape(-1, *globais.shape[2:])
-        b_mascara, b_acao, b_logp = mascaras.reshape(-1, n_acoes), acoes.reshape(-1), logprobs.reshape(-1)
-        b_vant = torch.as_tensor(vantagens.reshape(-1), device=disp)
-        b_ret = torch.as_tensor(retornos.reshape(-1), device=disp)
-        tamanho_minilote = config.tamanho_lote // config.minilotes
-        fracoes_recortadas, kls = [], []
-        for _ in range(config.epocas):
-            ordem = torch.randperm(config.tamanho_lote, device=disp)
-            for inicio_ml in range(0, config.tamanho_lote, tamanho_minilote):
-                ml = ordem[inicio_ml:inicio_ml + tamanho_minilote]
-                dist, valor = rede.distribuicao(b_grid[ml], b_glob[ml], b_mascara[ml])
-                logp_novo = dist.log_prob(b_acao[ml])
-                log_razao = logp_novo - b_logp[ml]
-                razao = log_razao.exp()
-                with torch.no_grad():
-                    kls.append(((razao - 1) - log_razao).mean().item())  # KL aproximado
-                    fracoes_recortadas.append(((razao - 1).abs() > config.recorte).float().mean().item())
+            # 1. COLETA ---------------------------------------------------------------
+            if config.assincrono:
+                partidas_recentes += coletor.coletar(
+                    rede, T, grids, globais, mascaras, acoes, logprobs, recompensas, terminados, valores, disp
+                )
+                passo_global += N * T
+                grid, glob = coletor.observacao_atual(disp)
+            else:
+                for t in range(T):
+                    passo_global += N
+                    grids[t], globais[t], mascaras[t] = grid, glob, mascara
+                    with torch.no_grad():
+                        dist, valor = rede.distribuicao(grid, glob, mascara)
+                        acao = dist.sample()
+                    acoes[t], logprobs[t] = acao, dist.log_prob(acao)
+                    valores[t] = valor.cpu().numpy()
 
-                vant = b_vant[ml]
-                vant = (vant - vant.mean()) / (vant.std() + 1e-8)  # normalizar estabiliza o passo
-                perda_politica = torch.max(
-                    -vant * razao, -vant * torch.clamp(razao, 1 - config.recorte, 1 + config.recorte)
-                ).mean()
-                perda_valor = 0.5 * ((valor - b_ret[ml]) ** 2).mean()
-                entropia = _entropia_mascarada(dist, b_mascara[ml]).mean()
-                perda = perda_politica - config.coef_entropia * entropia + config.coef_valor * perda_valor
+                    obs, r, term, trunc, info = envs.step(acao.cpu().numpy())
+                    fim = np.logical_or(term, trunc)
+                    recompensas[t], terminados[t] = r, fim
+                    retorno_corrente += r
+                    passos_corrente += 1
+                    for i in np.flatnonzero(fim):
+                        partida = {"retorno": float(retorno_corrente[i]), "passos": int(passos_corrente[i])}
+                        final = info.get("final_info", {})
+                        for chave in CHAVES_FINAIS:
+                            if chave in final and final.get(f"_{chave}", np.ones(N, bool))[i]:
+                                partida[chave] = float(final[chave][i])
+                        partidas_recentes.append(partida)
+                        retorno_corrente[i] = 0.0
+                        passos_corrente[i] = 0
+                    grid, glob = _tensores(obs, disp)
+                    mascara = torch.as_tensor(np.stack(envs.call("action_masks")), device=disp)
 
-                otimizador.zero_grad()
-                perda.backward()
-                nn.utils.clip_grad_norm_(rede.parameters(), config.norma_max_gradiente)
-                otimizador.step()
+            # 2. VANTAGEM (GAE) ---------------------------------------------------------
+            with torch.no_grad():
+                _, valor_seguinte = rede(grid, glob)
+            vantagens, retornos = vantagens_gae(
+                recompensas, valores, terminados, valor_seguinte.cpu().numpy(), config.gamma, config.lambda_gae
+            )
 
-        # Registro ------------------------------------------------------------------
-        var_ret = np.var(retornos)
-        variancia_explicada = np.nan if var_ret == 0 else 1 - np.var(retornos - valores) / var_ret
-        linha = {
-            "atualizacao": atualizacao, "passo": passo_global,
-            "passos_por_segundo": passo_global / (time.time() - inicio),
-            "perda_politica": perda_politica.item(), "perda_valor": perda_valor.item(),
-            "entropia": entropia.item(), "kl": float(np.mean(kls)),
-            "fracao_recortada": float(np.mean(fracoes_recortadas)),
-            "variancia_explicada": float(variancia_explicada),
-            "taxa": otimizador.param_groups[0]["lr"],
-        }
-        if partidas_recentes:
-            linha["partidas"] = len(partidas_recentes)
-            for chave in partidas_recentes[0]:
-                linha[f"partida/{chave}"] = float(np.mean([p[chave] for p in partidas_recentes if chave in p]))
-            partidas_recentes = []
-        if avaliacao and config.avaliar_a_cada and atualizacao % config.avaliar_a_cada == 0:
-            for chave, valor_av in avaliacao(rede, passo_global).items():
-                linha[f"avaliacao/{chave}"] = valor_av
-        for chave, valor_l in linha.items():
-            if chave not in ("atualizacao", "passo") and np.isfinite(valor_l):
-                registro(chave, valor_l, passo_global)
-        historico.append(linha)
+            # 3. ATUALIZAÇÃO ---------------------------------------------------------------
+            b_grid, b_glob = grids.reshape(-1, *grids.shape[2:]), globais.reshape(-1, *globais.shape[2:])
+            b_mascara, b_acao, b_logp = mascaras.reshape(-1, n_acoes), acoes.reshape(-1), logprobs.reshape(-1)
+            b_vant = torch.as_tensor(vantagens.reshape(-1), device=disp)
+            b_ret = torch.as_tensor(retornos.reshape(-1), device=disp)
+            tamanho_minilote = config.tamanho_lote // config.minilotes
+            fracoes_recortadas, kls = [], []
+            for _ in range(config.epocas):
+                ordem = torch.randperm(config.tamanho_lote, device=disp)
+                for inicio_ml in range(0, config.tamanho_lote, tamanho_minilote):
+                    ml = ordem[inicio_ml:inicio_ml + tamanho_minilote]
+                    dist, valor = rede.distribuicao(b_grid[ml], b_glob[ml], b_mascara[ml])
+                    logp_novo = dist.log_prob(b_acao[ml])
+                    log_razao = logp_novo - b_logp[ml]
+                    razao = log_razao.exp()
+                    with torch.no_grad():
+                        kls.append(((razao - 1) - log_razao).mean().item())  # KL aproximado
+                        fracoes_recortadas.append(((razao - 1).abs() > config.recorte).float().mean().item())
 
-    torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "rede.pt")
-    registro.fechar()
-    envs.close()
-    return rede, historico
+                    vant = b_vant[ml]
+                    vant = (vant - vant.mean()) / (vant.std() + 1e-8)  # normalizar estabiliza o passo
+                    perda_politica = torch.max(
+                        -vant * razao, -vant * torch.clamp(razao, 1 - config.recorte, 1 + config.recorte)
+                    ).mean()
+                    perda_valor = 0.5 * ((valor - b_ret[ml]) ** 2).mean()
+                    entropia = _entropia_mascarada(dist, b_mascara[ml]).mean()
+                    perda = perda_politica - config.coef_entropia * entropia + config.coef_valor * perda_valor
+
+                    otimizador.zero_grad()
+                    perda.backward()
+                    nn.utils.clip_grad_norm_(rede.parameters(), config.norma_max_gradiente)
+                    otimizador.step()
+
+            # Registro ------------------------------------------------------------------
+            var_ret = np.var(retornos)
+            variancia_explicada = np.nan if var_ret == 0 else 1 - np.var(retornos - valores) / var_ret
+            linha = {
+                "atualizacao": atualizacao, "passo": passo_global,
+                "passos_por_segundo": (passo_global - passo_inicial) / (time.time() - inicio),
+                "perda_politica": perda_politica.item(), "perda_valor": perda_valor.item(),
+                "entropia": entropia.item(), "kl": float(np.mean(kls)),
+                "fracao_recortada": float(np.mean(fracoes_recortadas)),
+                "variancia_explicada": float(variancia_explicada),
+                "taxa": otimizador.param_groups[0]["lr"],
+            }
+            if partidas_recentes:
+                linha["partidas"] = len(partidas_recentes)
+                for chave in partidas_recentes[0]:
+                    linha[f"partida/{chave}"] = float(np.mean([p[chave] for p in partidas_recentes if chave in p]))
+                partidas_recentes = []
+            if avaliacao and config.avaliar_a_cada and atualizacao % config.avaliar_a_cada == 0:
+                resultado_av = avaliacao(rede, passo_global)
+                for chave, valor_av in resultado_av.items():
+                    linha[f"avaliacao/{chave}"] = valor_av
+                valor_melhor = resultado_av.get(config.chave_melhor) if config.chave_melhor else None
+                if valor_melhor is not None and np.isfinite(valor_melhor) and (melhor is None or valor_melhor > melhor):
+                    melhor = float(valor_melhor)
+                    torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "melhor_rede.pt")
+                    linha["avaliacao/melhor"] = melhor
+            for chave, valor_l in linha.items():
+                if chave not in ("atualizacao", "passo") and np.isfinite(valor_l):
+                    registro(chave, valor_l, passo_global)
+            historico.append(linha)
+            if config.salvar_a_cada and atualizacao % config.salvar_a_cada == 0:
+                _salvar_checkpoint(pasta, rede, otimizador, atualizacao, passo_global, melhor, config)
+
+        torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "rede.pt")
+        _salvar_checkpoint(pasta, rede, otimizador, max(atualizacao_inicial, config.atualizacoes), passo_global, melhor, config)
+        return rede, historico
+    finally:
+        registro.fechar()
+        if coletor:
+            coletor.fechar()
+        if envs:
+            envs.close()
 
 
 def _entropia_mascarada(dist, mascara: torch.Tensor) -> torch.Tensor:

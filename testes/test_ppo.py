@@ -1,12 +1,14 @@
 """PPO, rede e mini-TD (M5)."""
 
+import functools
+
 import numpy as np
 import pytest
 import torch
 
 from monstervale_ia import ambiente as amb
 from monstervale_ia import mini_td as mt
-from monstervale_ia.ppo import ConfigPPO, escolher, treinar, vantagens_gae
+from monstervale_ia.ppo import ColetorAssincrono, ConfigPPO, criar_rede, escolher, treinar, vantagens_gae
 from monstervale_ia.rede import RedePolitica
 
 # --- Rede -----------------------------------------------------------------------------
@@ -91,3 +93,93 @@ def test_ppo_resolve_o_mini_td(tmp_path):
     rede, _ = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
     assert avaliar_mini_td(rede, gulosa=True)["fracao_do_otimo"] == 1.0
     assert avaliar_mini_td(rede, gulosa=False, partidas_por_tracado=50)["fracao_do_otimo"] >= 0.97
+
+
+# --- Coletor assíncrono e checkpoints (M6) --------------------------------------------
+
+REDE_PEQUENA = {"largura": 8, "camadas": 1, "oculta": 8}
+
+
+def _config_mini(tmp_path, **extra) -> ConfigPPO:
+    base = dict(n_ambientes=3, passos_por_coleta=16, semente=1, pasta=str(tmp_path), rede=REDE_PEQUENA,
+                dispositivo="cpu")
+    base.update(extra)
+    return ConfigPPO(**base)
+
+
+def test_coletor_assincrono_enche_t_passos_por_ambiente():
+    T, N = 20, 3
+    amostra = mt.MiniTD()
+    rede = criar_rede(amostra, mt.TIPOS_POR_CELULA, **REDE_PEQUENA)
+    espaco, n_acoes = amostra.observation_space, amostra.action_space.n
+    grids = torch.zeros((T, N, *espaco["grid"].shape))
+    globais = torch.zeros((T, N, *espaco["global"].shape))
+    mascaras = torch.zeros((T, N, n_acoes), dtype=torch.bool)
+    acoes = torch.zeros((T, N), dtype=torch.long)
+    logprobs = torch.zeros((T, N))
+    recompensas = np.zeros((T, N), dtype=np.float32)
+    terminados = np.zeros((T, N), dtype=np.float32)
+    valores = np.zeros((T, N), dtype=np.float32)
+    coletor = ColetorAssincrono(mt.MiniTD, N, semente=5)
+    try:
+        for _ in range(2):  # a segunda coleta continua de onde a primeira parou
+            terminados[:] = 0
+            mascaras[:] = False
+            partidas = coletor.coletar(
+                rede, T, grids, globais, mascaras, acoes, logprobs, recompensas, terminados, valores,
+                torch.device("cpu"),
+            )
+            # todas as posições [T, N] foram escritas (máscara com ao menos uma ação) e a ação sorteada é permitida
+            assert mascaras.any(-1).all()
+            assert mascaras.gather(2, acoes[..., None]).all()
+            assert (logprobs <= 0).all()
+            assert len(partidas) == int(terminados.sum())
+    finally:
+        coletor.fechar()
+    assert not coletor.processos
+
+
+def test_treino_assincrono_roda_no_mini_td(tmp_path):
+    config = _config_mini(tmp_path, assincrono=True, total_passos=3 * 3 * 16)
+    _, historico = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
+    assert [h["atualizacao"] for h in historico] == [1, 2, 3]
+    assert historico[-1]["passo"] == 3 * 3 * 16
+    assert (tmp_path / "rede.pt").exists() and (tmp_path / "checkpoint.pt").exists()
+
+
+@pytest.mark.lento
+def test_treino_assincrono_roda_no_ambiente_monstervale(tmp_path):
+    config = _config_mini(tmp_path, n_ambientes=2, passos_por_coleta=8, assincrono=True, total_passos=2 * 8)
+    _, historico = treinar(functools.partial(amb.AmbienteMonstervale, "level_01"), 9, config)
+    assert len(historico) == 1 and np.isfinite(historico[0]["perda_valor"])
+
+
+def test_retomada_continua_da_atualizacao_certa(tmp_path):
+    lote = 3 * 16
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_mini(tmp_path, total_passos=2 * lote))
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["atualizacao"] == 2
+    config = _config_mini(tmp_path, total_passos=4 * lote, retomar=True)
+    _, historico = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
+    assert [h["atualizacao"] for h in historico] == [3, 4]
+    assert historico[0]["passo"] == 3 * lote
+    assert historico[0]["taxa"] == pytest.approx(0.5 * config.taxa_aprendizado)  # anelamento continua
+    linhas = (tmp_path / "metricas.csv").read_text(encoding="utf-8").splitlines()
+    assert linhas.count("passo,nome,valor") == 1
+    assert any(linha.startswith(f"{2 * lote},") for linha in linhas)  # o histórico anterior continua lá
+
+
+def test_checkpoint_periodico(tmp_path):
+    lote = 3 * 16
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_mini(tmp_path, total_passos=3 * lote, salvar_a_cada=1))
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["atualizacao"] == 3
+
+
+def test_grava_a_melhor_rede(tmp_path):
+    retornos = iter([1.0, 3.0, 2.0])
+    config = _config_mini(tmp_path, total_passos=3 * 3 * 16, avaliar_a_cada=1, chave_melhor="retorno")
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config, avaliacao=lambda rede, passo: {"retorno": next(retornos)})
+    salvo = torch.load(tmp_path / "melhor_rede.pt", weights_only=False)
+    assert set(salvo) == {"rede", "config"}
+    rede = criar_rede(mt.MiniTD(), mt.TIPOS_POR_CELULA, **salvo["config"]["rede"])
+    rede.load_state_dict(salvo["rede"])
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 3.0
