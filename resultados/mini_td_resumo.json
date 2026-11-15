@@ -1,0 +1,56 @@
+{
+  "1": {
+    "gulosa": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.5,
+      "media": 2.5,
+      "fracao_do_otimo": 1.0
+    },
+    "sorteada": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.448,
+      "media": 2.487,
+      "fracao_do_otimo": 0.9948
+    }
+  },
+  "2": {
+    "gulosa": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.5,
+      "media": 2.5,
+      "fracao_do_otimo": 1.0
+    },
+    "sorteada": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.5,
+      "media": 2.5,
+      "fracao_do_otimo": 1.0
+    }
+  },
+  "3": {
+    "gulosa": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.5,
+      "media": 2.5,
+      "fracao_do_otimo": 1.0
+    },
+    "sorteada": {
+      "tracado_0": 2.5,
+      "tracado_1": 2.5,
+      "tracado_2": 2.5,
+      "tracado_3": 2.5,
+      "media": 2.5,
+      "fracao_do_otimo": 1.0
+    }
+  }
+}

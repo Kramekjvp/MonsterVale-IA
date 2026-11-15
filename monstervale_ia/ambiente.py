@@ -285,7 +285,6 @@ class AmbienteMonstervale(gym.Env):
             "ouro": sim.ouro,
             "estado": sim.estado,
             "estrelas": sim.estrelas() if sim.estado == "won" else 0,
-            "mascara": self.action_masks(),
         }
 
     # --- Visualização e gravação -------------------------------------------------

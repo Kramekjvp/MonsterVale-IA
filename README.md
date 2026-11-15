@@ -13,8 +13,8 @@ O plano completo, com as 12 decisões de projeto e o roteiro, está em [`docs/pl
 | M2 Simulação em Python com paridade | ✅ |
 | M3 Ambiente Gymnasium | ✅ |
 | M4 Linhas de base ([tabela](docs/linhas_de_base.md)) | ✅ |
-| M5 PPO + mini-TD | ⏳ |
-| M6 Fase 1 dominada | |
+| M5 PPO + mini-TD | ✅ |
+| M6 Fase 1 dominada | ⏳ |
 | M7 Assistir ao agente no Godot | |
 | M8 Fases 2 a 5 | |
 

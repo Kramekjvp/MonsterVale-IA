@@ -38,7 +38,7 @@ def test_espacos_e_observacao_inicial():
     construivel = obs["grid"][CANAIS.index("construivel")]
     assert {(x, y) for y, x in zip(*np.nonzero(construivel))} == set(env.mapa.construiveis)
     # Fase 1 começa com 120 de ouro e só arqueiro (65) e guerreiro (50): 2 classes × 124 células + chamar
-    assert info["mascara"].sum() == 2 * len(env.mapa.construiveis) + 1
+    assert env.action_masks().sum() == 2 * len(env.mapa.construiveis) + 1
 
 
 def test_progresso_na_rota_vai_de_0_na_entrada_a_1_na_vila():

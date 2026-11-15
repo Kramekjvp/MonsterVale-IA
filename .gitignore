@@ -7,3 +7,4 @@ runs/
 checkpoints/
 *.pt
 monstervale_ia.egg-info/
+resultados/treinos/

@@ -29,6 +29,8 @@ godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes
 uv run python ferramentas/gerar_partidas_agente.py   # partidas do ambiente exportadas no formato do jogo
 godot --headless --path jogo -s ../ferramentas/capturar_partidas.gd -- ../testes/referencias/agente.json ../testes/referencias/agente
 uv run python ferramentas/linhas_de_base.py level_01 ... --processos 8 && uv run python ferramentas/linhas_de_base.py --tabela
+uv run python ferramentas/treinar_mini_td.py --sementes 1 2 3   # valida o PPO (critério: gulosa 100%, sorteada ≥ 97%)
+uv run tensorboard --logdir resultados/treinos                  # curvas de treino
 ```
 
 ## Port da simulação
@@ -46,5 +48,11 @@ uv run python ferramentas/linhas_de_base.py level_01 ... --processos 8 && uv run
 - `monstervale_ia/ambiente.py`: Gymnasium, modo por fase de construção. Ações: `tipo × 220 + y × 20 + x` (0–6 posicionar, 7 melhorar, 8 dispensar) e 1980 = chamar onda.
 - Ações permitidas pela máscara TÊM que funcionar (o ambiente confere com assert).
 - `salvar_relatorio()` ajusta os tempos em −1/60 s para o recorded_player do jogo repetir no mesmo quadro.
+
+## PPO (M5)
+
+- `ppo.py` é PPO próprio no estilo CleanRL; `rede.py` é totalmente convolucional (mesma rede para qualquer tamanho de grid).
+- Qualquer mudança em `ppo.py` ou `rede.py`: rode `test_ppo.py` completo (inclui o mini-TD, lento). Bugs sutis só pioram ~8%; o mini-TD com ótimo conhecido é o detector.
+- PyTorch do PyPI vem com CUDA 13: no Windows/WSL2 com a GTX 1650, driver NVIDIA ≥ 580.
 
 Godot fixado em 4.7.2 (mesma versão do jogo).
