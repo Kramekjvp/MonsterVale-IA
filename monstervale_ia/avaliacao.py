@@ -70,6 +70,7 @@ class Resultado:
     onda_media: float
     retorno_medio: float
     minutos_medio: float
+    ouro_medio: float = 0.0  # ouro que sobrou no fim
 
     def linha(self) -> str:
         return (
@@ -120,6 +121,7 @@ def avaliar(
         onda_media=float(np.mean([r["onda"] for r in resumos])),
         retorno_medio=float(np.mean([r["retorno"] for r in resumos])),
         minutos_medio=float(np.mean([r["quadro"] for r in resumos])) / 3600,
+        ouro_medio=float(np.mean([r["ouro"] for r in resumos])),
     )
 
 

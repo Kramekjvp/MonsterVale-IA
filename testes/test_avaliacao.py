@@ -38,3 +38,84 @@ def test_melhor_humano_e_estrelas():
     assert estrelas_por_vidas(18) == 3 and estrelas_por_vidas(17) == 2 and estrelas_por_vidas(9) == 1
     humano = melhor_humano("level_01")
     assert humano["estrelas"] == 3 and humano["vidas"] == 20
+
+
+# --- Avaliação de uma rede (M6) ---------------------------------------------------------
+
+import json
+import pickle
+from dataclasses import asdict
+
+import pytest
+import torch
+
+from monstervale_ia.agente_rede import (
+    carregar_rede, criar_agente, criterio_dominada, exportar_partida_gulosa, fabrica_agente,
+)
+from monstervale_ia.agentes import jogar
+from monstervale_ia.ambiente import TIPOS_POR_CELULA, AmbienteMonstervale
+from monstervale_ia.avaliacao import ambiente
+from monstervale_ia.ppo import ConfigPPO, criar_rede
+
+
+@pytest.fixture(scope="module")
+def rede_pt(tmp_path_factory):
+    torch.manual_seed(0)
+    config = ConfigPPO(rede={"largura": 8, "camadas": 2, "oculta": 8})
+    rede = criar_rede(AmbienteMonstervale("level_01"), TIPOS_POR_CELULA, **config.rede)
+    caminho = tmp_path_factory.mktemp("rede") / "rede.pt"
+    torch.save({"rede": rede.state_dict(), "config": asdict(config)}, caminho)
+    return caminho
+
+
+def _jogar_registrando(caminho, gulosa, semente):
+    agente = criar_agente(str(caminho), "level_01", gulosa)
+    acoes = []
+
+    def espiao(env, rng):
+        a = agente(env, rng)
+        assert env.action_masks()[a]
+        acoes.append(a)
+        return a
+
+    return jogar(ambiente("level_01"), espiao, semente), acoes
+
+
+def test_carregar_rede_em_modo_de_avaliacao(rede_pt):
+    assert not carregar_rede(rede_pt, "level_01").training
+
+
+def test_agente_so_escolhe_acoes_validas_e_gulosa_e_deterministica(rede_pt):
+    r1, a1 = _jogar_registrando(rede_pt, True, 0)
+    r2, a2 = _jogar_registrando(rede_pt, True, 0)
+    assert a1 == a2 and r1 == r2
+
+
+def test_sorteada_repete_com_a_mesma_semente(rede_pt):
+    _, a1 = _jogar_registrando(rede_pt, False, 3)
+    _, a2 = _jogar_registrando(rede_pt, False, 3)
+    _, a3 = _jogar_registrando(rede_pt, False, 4)
+    assert a1 == a2 and a1 != a3
+
+
+def test_criterio_devolve_a_estrutura(rede_pt):
+    gulosa, sorteada, veredito = criterio_dominada(rede_pt, "level_01", sementes=[0, 1])
+    assert gulosa.partidas == 1 and sorteada.partidas == 2
+    assert 0 <= veredito.tres_estrelas_sorteada <= 1 and veredito.minimo == 0.8
+    assert veredito.dominada is False  # rede aleatória não domina
+    assert hasattr(gulosa, "ouro_medio")
+
+
+def test_criterio_com_processos(rede_pt):
+    _, sorteada, _ = criterio_dominada(rede_pt, "level_01", processos=2, sementes=[0, 1, 2, 3])
+    _, sequencial, _ = criterio_dominada(rede_pt, "level_01", processos=1, sementes=[0, 1, 2, 3])
+    assert sorteada.partidas == 4 and sorteada == sequencial
+
+
+def test_fabrica_e_serializavel(rede_pt):
+    pickle.loads(pickle.dumps(fabrica_agente(rede_pt, "level_01", True)))
+
+
+def test_exporta_a_partida_gulosa(rede_pt, tmp_path):
+    destino = exportar_partida_gulosa(rede_pt, "level_01", tmp_path / "partida.json")
+    assert destino.exists() and json.loads(destino.read_text(encoding="utf-8"))
