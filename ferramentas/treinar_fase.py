@@ -7,7 +7,7 @@ A melhor rede pelo retorno guloso fica em `melhor_rede.pt`; a última, em
 
 Uso:
   uv run python ferramentas/treinar_fase.py --fase level_01 --passos 2000000 --nome f1_s1
-  uv run python ferramentas/treinar_fase.py --nome f1_s1 --retomar     # continua de onde parou
+  uv run python ferramentas/treinar_fase.py --nome f1_s1 --retomar     # continua de onde parou, com a config salva
   uv run tensorboard --logdir resultados/treinos
   uv run python ferramentas/avaliar_agente.py resultados/treinos/f1_s1/melhor_rede.pt --fase level_01 --processos 8
 """
@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import functools
+import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -56,16 +58,26 @@ if __name__ == "__main__":
     parser.add_argument("--semente", type=int, default=1)
     parser.add_argument("--avaliar-a-cada", type=int, default=10, help="atualizações")
     parser.add_argument("--salvar-a-cada", type=int, default=10, help="atualizações")
-    parser.add_argument("--retomar", action="store_true")
+    parser.add_argument("--retomar", action="store_true",
+                        help="continua o treino da pasta com a config salva (os outros argumentos são ignorados)")
     args = parser.parse_args()
+    # No Windows, com a saída redirecionada (> log.txt), o padrão é cp1252, que não tem ★ nem →.
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
-    config = ConfigPPO(
-        total_passos=args.passos, n_ambientes=args.ambientes, passos_por_coleta=args.passos_por_coleta,
-        gamma=args.gamma, taxa_aprendizado=args.taxa, coef_entropia=args.entropia,
-        semente=args.semente, assincrono=True, dispositivo="auto",
-        pasta=str(RAIZ / "resultados" / "treinos" / args.nome),
-        avaliar_a_cada=args.avaliar_a_cada, salvar_a_cada=args.salvar_a_cada, chave_melhor="retorno",
-    )
+    pasta = RAIZ / "resultados" / "treinos" / args.nome
+    if args.retomar:
+        # A config original manda (passos, ambientes, gamma...): retomar com outra mudaria o treino no meio.
+        salva = json.loads((pasta / "config.json").read_text(encoding="utf-8"))
+        config = ConfigPPO(**{**salva, "pasta": str(pasta)})
+        print(f"retomando {pasta.name} com a config salva ({config.total_passos} passos, {config.n_ambientes} ambientes)")
+    else:
+        config = ConfigPPO(
+            total_passos=args.passos, n_ambientes=args.ambientes, passos_por_coleta=args.passos_por_coleta,
+            gamma=args.gamma, taxa_aprendizado=args.taxa, coef_entropia=args.entropia,
+            semente=args.semente, assincrono=True, dispositivo="auto", pasta=str(pasta),
+            avaliar_a_cada=args.avaliar_a_cada, salvar_a_cada=args.salvar_a_cada, chave_melhor="retorno",
+        )
     rede, historico = treinar(
         functools.partial(AmbienteMonstervale, args.fase), TIPOS_POR_CELULA, config,
         avaliacao=functools.partial(avaliar_gulosa, fase=args.fase), retomar=args.retomar,
