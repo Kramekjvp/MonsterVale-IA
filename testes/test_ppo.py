@@ -156,7 +156,12 @@ def test_treino_assincrono_roda_no_ambiente_monstervale(tmp_path):
 
 def test_retomada_continua_da_atualizacao_certa(tmp_path):
     lote = 3 * 16
-    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_mini(tmp_path, total_passos=2 * lote))
+    def queda(rede, passo):
+        raise KeyboardInterrupt  # derruba o treino na atualização 3
+
+    primeira = _config_mini(tmp_path, total_passos=4 * lote, salvar_a_cada=1, avaliar_a_cada=3)
+    with pytest.raises(KeyboardInterrupt):
+        treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, primeira, avaliacao=queda)
     assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["atualizacao"] == 2
     config = _config_mini(tmp_path, total_passos=4 * lote, retomar=True)
     _, historico = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
@@ -183,3 +188,36 @@ def test_grava_a_melhor_rede(tmp_path):
     rede = criar_rede(mt.MiniTD(), mt.TIPOS_POR_CELULA, **salvo["config"]["rede"])
     rede.load_state_dict(salvo["rede"])
     assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 3.0
+
+
+def test_retomar_com_config_diferente_levanta_erro(tmp_path):
+    lote = 3 * 16
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_mini(tmp_path, total_passos=2 * lote))
+    config = _config_mini(tmp_path, total_passos=3 * lote, n_ambientes=4, retomar=True)
+    with pytest.raises(ValueError) as erro:
+        treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
+    mensagem = str(erro.value)
+    assert f"total_passos: salvo {2 * lote} x atual {3 * lote}" in mensagem
+    assert "n_ambientes: salvo 3 x atual 4" in mensagem
+    assert "passos_por_coleta" not in mensagem
+
+
+def test_retomada_parte_do_melhor_valor_real(tmp_path):
+    lote = 3 * 16
+
+    def queda(rede, passo):  # a 1ª avaliação melhora; a 2ª derruba o treino
+        if passo == lote:
+            return {"retorno": 5.0}
+        raise KeyboardInterrupt
+
+    config = _config_mini(tmp_path, total_passos=4 * lote, avaliar_a_cada=1, chave_melhor="retorno", salvar_a_cada=3)
+    with pytest.raises(KeyboardInterrupt):
+        treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config, avaliacao=queda)
+    # a atualização 1 não é múltiplo de salvar_a_cada, mas o checkpoint já guarda o melhor valor
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 5.0
+    antes = torch.load(tmp_path / "melhor_rede.pt", weights_only=False)["rede"]
+    config = _config_mini(tmp_path, total_passos=4 * lote, avaliar_a_cada=1, chave_melhor="retorno",
+                          salvar_a_cada=3, retomar=True)
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config, avaliacao=lambda rede, passo: {"retorno": 2.0})
+    depois = torch.load(tmp_path / "melhor_rede.pt", weights_only=False)["rede"]
+    assert all(torch.equal(antes[k], depois[k]) for k in antes)  # a rede pior não sobrescreveu

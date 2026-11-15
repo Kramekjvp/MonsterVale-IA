@@ -310,6 +310,14 @@ def treinar(
     checkpoint = None
     if (retomar or config.retomar) and caminho_checkpoint.exists():
         checkpoint = torch.load(caminho_checkpoint, map_location="cpu", weights_only=False)
+        salva = checkpoint["config"]
+        diferentes = [
+            f"{c}: salvo {salva[c]} x atual {getattr(config, c)}"
+            for c in ("total_passos", "n_ambientes", "passos_por_coleta")
+            if salva[c] != getattr(config, c)
+        ]
+        if diferentes:
+            raise ValueError("não dá para retomar com a config diferente do checkpoint (" + "; ".join(diferentes) + ")")
 
     np.random.seed(config.semente)
     torch.manual_seed(config.semente)
@@ -463,6 +471,7 @@ def treinar(
                 for chave in partidas_recentes[0]:
                     linha[f"partida/{chave}"] = float(np.mean([p[chave] for p in partidas_recentes if chave in p]))
                 partidas_recentes = []
+            melhorou = False
             if avaliacao and config.avaliar_a_cada and atualizacao % config.avaliar_a_cada == 0:
                 resultado_av = avaliacao(rede, passo_global)
                 for chave, valor_av in resultado_av.items():
@@ -470,13 +479,15 @@ def treinar(
                 valor_melhor = resultado_av.get(config.chave_melhor) if config.chave_melhor else None
                 if valor_melhor is not None and np.isfinite(valor_melhor) and (melhor is None or valor_melhor > melhor):
                     melhor = float(valor_melhor)
+                    melhorou = True
                     torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "melhor_rede.pt")
                     linha["avaliacao/melhor"] = melhor
             for chave, valor_l in linha.items():
                 if chave not in ("atualizacao", "passo") and np.isfinite(valor_l):
                     registro(chave, valor_l, passo_global)
             historico.append(linha)
-            if config.salvar_a_cada and atualizacao % config.salvar_a_cada == 0:
+            # checkpoint também quando a melhor rede melhora: o "melhor" salvo nunca fica defasado
+            if melhorou or (config.salvar_a_cada and atualizacao % config.salvar_a_cada == 0):
                 _salvar_checkpoint(pasta, rede, otimizador, atualizacao, passo_global, melhor, config)
 
         torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "rede.pt")
