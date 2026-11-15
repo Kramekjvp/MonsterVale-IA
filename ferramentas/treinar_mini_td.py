@@ -48,14 +48,15 @@ if __name__ == "__main__":
     parser.add_argument("--sementes", type=int, nargs="+", default=[1])
     parser.add_argument("--passos", type=int, default=150_000)
     parser.add_argument("--ambientes", type=int, default=8)
+    parser.add_argument("--assincrono", action="store_true", help="coletor assíncrono (um processo por ambiente)")
     args = parser.parse_args()
 
     resumo = {}
     for semente in args.sementes:
         config = ConfigPPO(
             total_passos=args.passos, n_ambientes=args.ambientes, passos_por_coleta=64,
-            semente=semente, pasta=str(RAIZ / "resultados" / "treinos" / f"mini_td_s{semente}"),
-            avaliar_a_cada=10, rede={"largura": 32, "camadas": 3, "oculta": 64},
+            semente=semente, pasta=str(RAIZ / "resultados" / "treinos" / f"mini_td_s{semente}{'_assinc' if args.assincrono else ''}"),
+            avaliar_a_cada=10, assincrono=args.assincrono, rede={"largura": 32, "camadas": 3, "oculta": 64},
         )
         rede, historico = treinar(
             MiniTD, TIPOS_POR_CELULA, config,
