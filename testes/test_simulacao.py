@@ -16,8 +16,8 @@ from monstervale_ia.dados_jogo import carregar_catalogo, carregar_fase
 from monstervale_ia.roteiro import executar
 
 PASTA = Path(__file__).parent / "referencias"
-ENTRADA = json.loads((PASTA / "roteiros_entrada.json").read_text())
-ESPERADO = json.loads((PASTA / "roteiros.json").read_text())
+ENTRADA = json.loads((PASTA / "roteiros_entrada.json").read_text(encoding="utf-8"))
+ESPERADO = json.loads((PASTA / "roteiros.json").read_text(encoding="utf-8"))
 CATALOGO = carregar_catalogo()
 TIPOS = sorted(CATALOGO["monsters"])
 

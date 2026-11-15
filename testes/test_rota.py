@@ -53,7 +53,7 @@ def test_rota_precisa_de_dois_pontos():
 # --- Paridade com as respostas douradas do Godot -------------------------------
 
 def _casos():
-    referencias = json.loads(REFERENCIAS.read_text())
+    referencias = json.loads(REFERENCIAS.read_text(encoding="utf-8"))
     for id_fase, rotas in referencias.items():
         for indice, ref in enumerate(rotas):
             yield pytest.param(id_fase, indice, ref, id=f"{id_fase}-rota{indice + 1}")

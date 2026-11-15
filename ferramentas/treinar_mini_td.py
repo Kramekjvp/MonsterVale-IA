@@ -71,5 +71,5 @@ if __name__ == "__main__":
         resumo[semente] = {"gulosa": gulosa, "sorteada": sorteada}
         print(f"semente {semente}: gulosa {gulosa}\n            sorteada {sorteada}")
     saida = RAIZ / "resultados" / "mini_td_resumo.json"
-    saida.write_text(json.dumps(resumo, indent=2))
+    saida.write_text(json.dumps(resumo, indent=2), encoding="utf-8")
     print(f"ótimo: {RETORNO_OTIMO}  → {saida}")

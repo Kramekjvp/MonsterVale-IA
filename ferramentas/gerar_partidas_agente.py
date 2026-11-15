@@ -36,4 +36,4 @@ if __name__ == "__main__":
             }
             print(f"{nome}: {resumo['estado']}, onda {resumo['onda']}, vidas {resumo['vidas']}, "
                   f"estrelas {resumo['estrelas']}, {len(env.historico)} ações")
-    (PASTA.parent / "agente_historicos.json").write_text(json.dumps(historicos))
+    (PASTA.parent / "agente_historicos.json").write_text(json.dumps(historicos), encoding="utf-8")

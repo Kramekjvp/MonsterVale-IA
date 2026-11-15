@@ -135,7 +135,7 @@ def melhor_humano(fase: str) -> dict | None:
 
     Melhor = venceu com mais vidas; no empate, a mais rápida.
     """
-    partidas = json.loads(PARTIDAS_HUMANAS.read_text())
+    partidas = json.loads(PARTIDAS_HUMANAS.read_text(encoding="utf-8"))
     vitorias = [(nome, p) for nome, p in partidas.items() if p["level"] == fase and p["state"] == "won"]
     if not vitorias:
         return None

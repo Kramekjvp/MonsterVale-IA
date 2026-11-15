@@ -144,8 +144,8 @@ def test_mesmo_historico_mesma_partida():
     assert (b.sim.estado, b.sim.vidas, b.sim.ouro, b.quadro) == (a.sim.estado, a.sim.vidas, a.sim.ouro, a.quadro)
 
 
-HISTORICOS = json.loads((REF / "agente_historicos.json").read_text())
-REPETIDAS = json.loads((REF / "agente.json").read_text())
+HISTORICOS = json.loads((REF / "agente_historicos.json").read_text(encoding="utf-8"))
+REPETIDAS = json.loads((REF / "agente.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("nome", sorted(HISTORICOS))

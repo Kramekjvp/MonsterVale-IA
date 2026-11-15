@@ -28,5 +28,5 @@ for f in IDS_FASES:
         "level": f, "frames": 80_000, "invincible": True,
         "actions": gerar_roteiro(f, classes, 80_000, 900, 26, ouro_extra=6000),
     }
-SAIDA.write_text(json.dumps(entrada))
+SAIDA.write_text(json.dumps(entrada), encoding="utf-8")
 print(f"{len(entrada)} roteiros em {SAIDA}")

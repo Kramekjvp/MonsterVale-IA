@@ -138,7 +138,7 @@ def treinar(
     """Treina uma política e devolve (rede, histórico de atualizações)."""
     pasta = Path(config.pasta)
     pasta.mkdir(parents=True, exist_ok=True)
-    (pasta / "config.json").write_text(json.dumps(asdict(config), indent=2))
+    (pasta / "config.json").write_text(json.dumps(asdict(config), indent=2), encoding="utf-8")
     registro = Registro(pasta)
 
     np.random.seed(config.semente)

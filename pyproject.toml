@@ -16,6 +16,16 @@ dev = [
     "pytest>=8.0",
 ]
 
+# PyTorch: no Linux, o pacote do PyPI já vem com CUDA. No Windows, o do PyPI é
+# só CPU; a build com CUDA 13.2 vem do repositório do próprio PyTorch.
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu132", marker = "sys_platform == 'win32'" }]
+
 [build-system]
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"

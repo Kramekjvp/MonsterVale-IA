@@ -5,7 +5,7 @@ from pathlib import Path
 
 from monstervale_ia.godot import ordenar_como_godot
 
-CASOS = json.loads((Path(__file__).parent / "referencias" / "ordenacao.json").read_text())
+CASOS = json.loads((Path(__file__).parent / "referencias" / "ordenacao.json").read_text(encoding="utf-8"))
 
 
 def _menor(a, b):

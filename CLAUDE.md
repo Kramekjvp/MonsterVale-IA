@@ -14,7 +14,7 @@ Projeto pessoal de aprendizado: uma rede neural (PPO com máscara de ações) pa
 ## Comandos
 
 ```bash
-uv sync                                   # ambiente Python
+uv sync                                   # ambiente Python (no 1º sync no Windows, o uv.lock é atualizado: faça commit)
 uv run pytest -m 'not lento'              # testes rápidos (segundos)
 uv run pytest                             # tudo, inclusive paridade de partidas (~3 min)
 godot --headless --path jogo --import     # uma vez, depois de clonar
@@ -54,6 +54,7 @@ uv run tensorboard --logdir resultados/treinos                  # curvas de trei
 
 - `ppo.py` é PPO próprio no estilo CleanRL; `rede.py` é totalmente convolucional (mesma rede para qualquer tamanho de grid).
 - Qualquer mudança em `ppo.py` ou `rede.py`: rode `test_ppo.py` completo (inclui o mini-TD, lento). Bugs sutis só pioram ~8%; o mini-TD com ótimo conhecido é o detector.
-- PyTorch do PyPI vem com CUDA 13: no Windows/WSL2 com a GTX 1650, driver NVIDIA ≥ 580.
+- O treino roda no **Windows nativo** do desktop (o WSL2 de lá não inicia): veja `docs/windows.md`. No Windows o PyTorch com CUDA 13.2 vem de download.pytorch.org (`[tool.uv.sources]` no pyproject); driver NVIDIA ≥ 580.
+- Windows usa *spawn*: scripts com processos precisam de `if __name__ == "__main__":` e fábricas de ambiente serializáveis (`functools.partial`, não `lambda`). Leia e grave texto sempre com `encoding="utf-8"`.
 
 Godot fixado em 4.7.2 (mesma versão do jogo).

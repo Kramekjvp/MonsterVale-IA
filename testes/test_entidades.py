@@ -12,7 +12,7 @@ from monstervale_ia.monstro import Monstro
 from monstervale_ia.rota import Rota
 from monstervale_ia.vetor import vetor
 
-REF = json.loads((Path(__file__).parent / "referencias" / "entidades.json").read_text())
+REF = json.loads((Path(__file__).parent / "referencias" / "entidades.json").read_text(encoding="utf-8"))
 CATALOGO = carregar_catalogo()
 PASSO = 1.0 / 60.0
 

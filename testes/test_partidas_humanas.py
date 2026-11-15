@@ -20,7 +20,7 @@ from monstervale_ia.dados_jogo import carregar_catalogo, carregar_fase
 from monstervale_ia.roteiro import executar
 from monstervale_ia.simulacao import Simulacao
 
-PARTIDAS = json.loads((Path(__file__).parent / "referencias" / "partidas.json").read_text())
+PARTIDAS = json.loads((Path(__file__).parent / "referencias" / "partidas.json").read_text(encoding="utf-8"))
 CATALOGO = carregar_catalogo()
 TIPOS = sorted(CATALOGO["monsters"])
 

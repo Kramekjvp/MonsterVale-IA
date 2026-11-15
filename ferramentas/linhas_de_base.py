@@ -61,7 +61,7 @@ def tabela() -> str:
         if not arquivo.exists():
             continue
         partes += ["", f"## {fase}", "", CABECALHO]
-        for r in json.loads(arquivo.read_text()):
+        for r in json.loads(arquivo.read_text(encoding="utf-8")):
             partes.append(Resultado(**r).linha())
         humano = melhor_humano(fase)
         if humano:
