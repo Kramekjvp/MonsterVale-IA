@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument("--avaliar-a-cada", type=int, default=10, help="atualizações")
     parser.add_argument("--salvar-a-cada", type=int, default=10, help="atualizações")
     parser.add_argument("--retomar", action="store_true",
-                        help="continua o treino da pasta com a config salva (os outros argumentos são ignorados)")
+                        help="continua o treino da pasta com a config e a fase salvas (os outros argumentos são ignorados)")
     args = parser.parse_args()
     # No Windows, com a saída redirecionada (> log.txt), o padrão é cp1252, que não tem ★ nem →.
     sys.stdout.reconfigure(encoding="utf-8")
@@ -70,8 +70,12 @@ if __name__ == "__main__":
         # A config original manda (passos, ambientes, gamma...): retomar com outra mudaria o treino no meio.
         salva = json.loads((pasta / "config.json").read_text(encoding="utf-8"))
         config = ConfigPPO(**{**salva, "pasta": str(pasta)})
-        print(f"retomando {pasta.name} com a config salva ({config.total_passos} passos, {config.n_ambientes} ambientes)")
+        args.fase = (pasta / "fase.txt").read_text(encoding="utf-8").strip()  # a fase não está na ConfigPPO
+        print(f"retomando {pasta.name} em {args.fase} com a config salva"
+              f" ({config.total_passos} passos, {config.n_ambientes} ambientes)")
     else:
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / "fase.txt").write_text(args.fase, encoding="utf-8")
         config = ConfigPPO(
             total_passos=args.passos, n_ambientes=args.ambientes, passos_por_coleta=args.passos_por_coleta,
             gamma=args.gamma, taxa_aprendizado=args.taxa, coef_entropia=args.entropia,
