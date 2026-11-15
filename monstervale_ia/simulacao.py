@@ -25,8 +25,11 @@ from monstervale_ia.monstro import Monstro
 from monstervale_ia.rota import Rota
 from monstervale_ia.vetor import (
     Vetor,
+    MARGEM_PREFILTRO,
+    dentro_do_raio,
     direcao_para,
     distancia,
+    distancia_aprox,
     escalar,
     ponto_mais_proximo_do_segmento,
     somar,
@@ -302,10 +305,12 @@ class Simulacao:
                     self._atacar_de_passagem(monstro, delta)
 
     def _tentar_bloquear(self, monstro: Monstro) -> None:
+        mx, my = monstro.posicao_f()
         for humano in self.humanos:
-            atributos = humano.atributos()
-            alcance_bloqueio = float(atributos.get("block_range", atributos["range"]))
-            if humano.tem_espaco_para_bloquear() and float(distancia(humano.posicao, monstro.posicao())) <= alcance_bloqueio:
+            if not humano.tem_espaco_para_bloquear():
+                continue
+            hx, hy = humano.posicao_f
+            if self._no_raio((hx - mx) ** 2 + (hy - my) ** 2, humano.alcance_bloqueio, humano, monstro):
                 monstro.bloqueador = humano
                 humano.bloqueados.append(monstro)
                 monstro.recarga = 0.0
@@ -323,8 +328,14 @@ class Simulacao:
             return
         mais_proximo = None
         menor_distancia = monstro.alcance
+        mx, my = monstro.posicao_f()
+        limite2 = (menor_distancia + MARGEM_PREFILTRO) ** 2
         for humano in self.humanos:
-            if humano.esta_caido():
+            if humano.tempo_caido > 0.0:
+                continue
+            # Pré-filtro (conta inline, sem chamar função): longe demais com certeza.
+            hx, hy = humano.posicao_f
+            if (hx - mx) ** 2 + (hy - my) ** 2 > limite2:
                 continue
             d = float(distancia(humano.posicao, monstro.posicao()))
             if d <= menor_distancia:  # <=: no empate, o último da lista vence
@@ -354,7 +365,12 @@ class Simulacao:
         humano.bloqueados.clear()
 
     def _andar(self, monstro: Monstro, delta: float) -> None:
-        monstro.distancia += monstro.velocidade_atual() * delta
+        # velocidade_atual(), inline (otimização): parado se preso ou atordoado.
+        if monstro.tempo_raiz > 0.0 or monstro.tempo_atordoado > 0.0:
+            velocidade = 0.0
+        else:
+            velocidade = monstro.velocidade * (monstro.fator_lentidao if monstro.tempo_lentidao > 0.0 else 1.0)
+        monstro.distancia += velocidade * delta
         direcao = monstro.direcao_horizontal()
         if direcao != 0:
             monstro.olhando = direcao
@@ -391,7 +407,7 @@ class Simulacao:
                 continue
             alvo = self._escolher_alvo(humano)
             if alvo is not None:
-                humano.recarga = float(humano.atributos()["cooldown"])
+                humano.recarga = humano.intervalo
                 self._atacar(humano, alvo)
 
     def _escolher_alvo(self, humano: Humano) -> Monstro | None:
@@ -399,16 +415,32 @@ class Simulacao:
             return humano.bloqueados[0]
         melhor = None
         melhor_nota = -math.inf
-        alcance = float(humano.atributos()["range"])
+        alcance = humano.alcance
+        prioridade = humano.prioridade
+        hx, hy = humano.posicao_f
         for monstro in self.monstros:
-            d = float(distancia(humano.posicao, monstro.posicao()))
-            if d > alcance:
+            mx, my = monstro.posicao_f()
+            if not self._no_raio((hx - mx) ** 2 + (hy - my) ** 2, alcance, humano, monstro):
                 continue
-            nota = self._nota_alvo(humano.prioridade, monstro, d)
+            # A distância exata só entra na nota da prioridade "closest".
+            d = float(distancia(humano.posicao, monstro.posicao())) if prioridade == "closest" else 0.0
+            nota = self._nota_alvo(prioridade, monstro, d)
             if nota > melhor_nota:  # >: no empate, o primeiro da lista vence
                 melhor_nota = nota
                 melhor = monstro
         return melhor
+
+    @staticmethod
+    def _no_raio(d2: float, raio: float, humano: Humano, monstro: Monstro) -> bool:
+        """distancia(humano, monstro) <= raio, igual ao Godot, a partir da distância² em float64.
+
+        Mesmo pré-filtro de vetor.dentro_do_raio, com a conta feita no laço de quem chama.
+        """
+        if d2 < (raio - MARGEM_PREFILTRO) ** 2:
+            return True
+        if d2 > (raio + MARGEM_PREFILTRO) ** 2:
+            return False
+        return float(distancia(humano.posicao, monstro.posicao())) <= raio
 
     @staticmethod
     def _nota_alvo(prioridade: str, monstro: Monstro, d: float) -> float:
@@ -472,12 +504,14 @@ class Simulacao:
 
     def _proximos(self, alvo: Monstro, raio: float, quantidade: int) -> list[Monstro]:
         """Até `quantidade` monstros a até `raio` do alvo, do mais perto ao mais longe."""
-        centro = alvo.posicao()
-        perto = [m for m in self.monstros if m is not alvo and float(distancia(m.posicao(), centro)) <= raio]
-        ordenar_como_godot(
-            perto,
-            lambda a, b: distancia(a.posicao(), alvo.posicao()) < distancia(b.posicao(), alvo.posicao()),
-        )
+        centro, centro_f = alvo.posicao(), alvo.posicao_f()
+        perto = [
+            m for m in self.monstros
+            if m is not alvo and dentro_do_raio(m.posicao(), m.posicao_f(), centro, centro_f, raio)
+        ]
+        # As distâncias exatas não mudam durante a ordenação: calcula uma vez por monstro.
+        d = {id(m): distancia(m.posicao(), centro) for m in perto}
+        ordenar_como_godot(perto, lambda a, b: d[id(a)] < d[id(b)])
         return perto[:max(quantidade, 0)]
 
     def _ferir(self, monstro: Monstro, base: int, tipo_dano: str, origem: str, ouro_abate: int = 0) -> None:
@@ -554,6 +588,8 @@ class Simulacao:
         self.fogos = [f for f in self.fogos if f["remaining"] > 0.0]
 
     def _queimar(self, fogo: dict) -> None:
+        centro = fogo["position"]
+        centro_f = (float(centro[0]), float(centro[1]))
         for monstro in list(self.monstros):
-            if float(distancia(monstro.posicao(), fogo["position"])) <= fogo["radius"]:
+            if dentro_do_raio(monstro.posicao(), monstro.posicao_f(), centro, centro_f, fogo["radius"]):
                 self._ferir(monstro, fogo["damage"], fogo["damage_type"], fogo["source"])

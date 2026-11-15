@@ -10,6 +10,8 @@ Um vetor aqui é só uma tupla ``(x, y)`` de ``np.float32``.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 f32 = np.float32
@@ -91,3 +93,28 @@ def ponto_mais_proximo_do_segmento(p: Vetor, a: Vetor, b: Vetor) -> Vetor:
     if d >= f32(1.0):
         return b
     return a[0] + nx * d, a[1] + ny * d
+
+
+# Margem do pré-filtro em float64. No mapa do jogo (coordenadas até ~700 px), o
+# erro do float32 numa distância fica abaixo de ~3e-4 px; com 1e-3 de folga, o
+# resultado em float64 só decide quando é impossível o float32 discordar.
+MARGEM_PREFILTRO = 1e-3
+
+
+def distancia_aprox(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Distância em float64 (rápida, NÃO idêntica ao Godot): só para pré-filtrar."""
+    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+
+
+def dentro_do_raio(a: Vetor, af: tuple[float, float], b: Vetor, bf: tuple[float, float], raio: float) -> bool:
+    """distancia(a, b) <= raio, com o mesmo resultado do Godot, mas rápido.
+
+    `af`/`bf` são as mesmas posições como float do Python. Só calcula em float32
+    quando a distância cai a menos de MARGEM_PREFILTRO da borda.
+    """
+    d = distancia_aprox(af, bf)
+    if d < raio - MARGEM_PREFILTRO:
+        return True
+    if d > raio + MARGEM_PREFILTRO:
+        return False
+    return float(distancia(a, b)) <= raio

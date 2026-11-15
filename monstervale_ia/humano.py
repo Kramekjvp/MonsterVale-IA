@@ -30,15 +30,27 @@ class Humano:
 
         self._dados = dados
         self._recuperando: float = 0.0
+        self.posicao_f = (float(centro[0]), float(centro[1]))
+        self.corpo_a_corpo_ = dados["attack"] == "melee"
+        self._ler_atributos()
         self.gasto = int(self.atributos()["cost"])
         self.vida = int(self.atributos().get("hp", 0))
 
     def atributos(self) -> dict[str, Any]:
         """Os números do nível atual (dano, alcance, recarga...)."""
-        return self._dados["levels"][self.nivel - 1]
+        return self._atributos
+
+    def _ler_atributos(self) -> None:
+        """Guarda os números do nível atual em campos (otimização: evita buscas no dicionário)."""
+        self._atributos = self._dados["levels"][self.nivel - 1]
+        a = self._atributos
+        self.alcance: float = float(a["range"])
+        self.alcance_bloqueio: float = float(a.get("block_range", a["range"]))
+        self.capacidade_bloqueio: int = int(a.get("block", 0))
+        self.intervalo: float = float(a["cooldown"])
 
     def corpo_a_corpo(self) -> bool:
-        return self._dados["attack"] == "melee"
+        return self.corpo_a_corpo_
 
     def tipo_dano(self) -> str:
         return self._dados["damage_type"]
@@ -57,15 +69,16 @@ class Humano:
 
     def tem_espaco_para_bloquear(self) -> bool:
         return (
-            self.corpo_a_corpo()
-            and not self.esta_caido()
-            and len(self.bloqueados) < int(self.atributos().get("block", 0))
+            self.corpo_a_corpo_
+            and not self.tempo_caido > 0.0
+            and len(self.bloqueados) < self.capacidade_bloqueio
         )
 
     def subir_nivel(self) -> None:
         self.gasto += self.custo_melhoria()
         vida_anterior = int(self.atributos().get("hp", 0))
         self.nivel += 1
+        self._ler_atributos()
         # Ganha a diferença de vida máxima, mantendo o dano que já levou.
         self.vida += int(self.atributos().get("hp", 0)) - vida_anterior
 

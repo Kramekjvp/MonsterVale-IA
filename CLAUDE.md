@@ -41,6 +41,7 @@ uv run tensorboard --logdir resultados/treinos                  # curvas de trei
 - Ordem das etapas, ordem dos laços e critérios de desempate do GDScript são parte do comportamento: não "melhore".
 - `sort_custom` do Godot não é estável: use `ordenar_como_godot` (godot.py), nunca `sorted()`.
 - Os nomes de estado ("playing", "won", "lost") e de eventos ("unit_placed"...) ficam iguais aos do jogo.
+- Otimizações (docs/aprendizado/09-otimizacao.md): cache de posição em Monstro, rota pré-calculada, pré-filtro float64 com margem 1e-3 px antes da conta exata em float32. Meça com `ferramentas/medir_velocidade.py`.
 - Paridade é igualdade exata, sem tolerância. Se um teste dourado falhar, procure a operação que mudou de precisão.
 
 ## Ambiente (M3)

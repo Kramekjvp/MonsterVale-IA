@@ -38,9 +38,28 @@ class Monstro:
         self.soltos: int = 0  # quantas vezes já soltou filhotes (Rei Slime)
 
         self._rota = rota
+        self._cache_distancia: float | None = None
+        self._cache_posicao: Vetor = (0, 0)
+        self._cache_posicao_f: tuple[float, float] = (0.0, 0.0)
+        self._cache_direcao: int = 0
 
     def posicao(self) -> Vetor:
-        return self._rota.posicao_em(self.distancia)
+        """Posição no mapa (float32). Calculada só quando a distância muda (otimização)."""
+        if self.distancia != self._cache_distancia:
+            self._atualizar_cache()
+        return self._cache_posicao
+
+    def posicao_f(self) -> tuple[float, float]:
+        """A mesma posição como float do Python, para os pré-filtros rápidos."""
+        if self.distancia != self._cache_distancia:
+            self._atualizar_cache()
+        return self._cache_posicao_f
+
+    def _atualizar_cache(self) -> None:
+        p, self._cache_direcao = self._rota.posicao_e_direcao_em(self.distancia)
+        self._cache_distancia = self.distancia
+        self._cache_posicao = p
+        self._cache_posicao_f = (float(p[0]), float(p[1]))
 
     def dano_recebido(self, quantidade: int, tipo_dano: str) -> int:
         """Dano depois da resistência; nunca menos que 1."""
@@ -50,7 +69,9 @@ class Monstro:
         return self._rota.comprimento
 
     def direcao_horizontal(self) -> int:
-        return self._rota.direcao_horizontal_em(self.distancia)
+        if self.distancia != self._cache_distancia:
+            self._atualizar_cache()
+        return self._cache_direcao
 
     def velocidade_atual(self) -> float:
         if self.esta_preso() or self.esta_atordoado():
@@ -87,6 +108,11 @@ class Monstro:
         self.tempo_atordoado = maxf(self.tempo_atordoado, segundos)
 
     def atualizar_efeitos(self, delta: float) -> None:
-        self.tempo_lentidao = maxf(0.0, self.tempo_lentidao - delta)
-        self.tempo_raiz = maxf(0.0, self.tempo_raiz - delta)
-        self.tempo_atordoado = maxf(0.0, self.tempo_atordoado - delta)
+        # Igual a maxf(0.0, t - delta) nos três; com t == 0 o resultado é 0, então
+        # dá para pular os timers parados (otimização: quase sempre estão parados).
+        if self.tempo_lentidao > 0.0:
+            self.tempo_lentidao = maxf(0.0, self.tempo_lentidao - delta)
+        if self.tempo_raiz > 0.0:
+            self.tempo_raiz = maxf(0.0, self.tempo_raiz - delta)
+        if self.tempo_atordoado > 0.0:
+            self.tempo_atordoado = maxf(0.0, self.tempo_atordoado - delta)
