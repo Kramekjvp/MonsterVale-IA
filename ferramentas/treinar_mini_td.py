@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     parser.add_argument("--ambientes", type=int, default=8)
     parser.add_argument("--assincrono", action="store_true", help="coletor assíncrono (um processo por ambiente)")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # no Windows, com a saída redirecionada, o padrão é cp1252
 
     resumo = {}
     for semente in args.sementes:
