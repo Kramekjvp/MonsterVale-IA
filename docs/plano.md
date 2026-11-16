@@ -20,6 +20,7 @@ Jogo alvo: [Monstervale](https://github.com/Brenaki/Monstervale), um tower defen
 | 10 | Hardware | Notebook com Arch para programar; desktop W11 (i5-10400F, 32 GB, GTX 1650) para treinar, **no Windows nativo** (revisto em 2026-11-14: o WSL2 do desktop não inicia); nuvem só se a etapa D pedir | O gargalo é a simulação na CPU: ~8–10 ambientes em paralelo |
 | 11 | Repositório | Repositório próprio (`monstervale-ia`) com o Monstervale como **submódulo git fixado num commit** (`jogo/`) | Versão do jogo congelada; atualizar vira um passo consciente, seguido dos testes de paridade |
 | 12 | Critério "fase dominada" | A política gulosa vence com 3★ **e** a política com sorteio tira 3★ em ≥ 80% de 100 partidas. Em todo relatório: robustez numa variante perturbada (tempos ±10%, ±1 monstro por grupo, só para medir) e comparação com a melhor partida humana (vidas, ouro sobrando, tempo) | Num jogo determinístico, uma vitória gulosa pode ser só uma sequência decorada |
+| 13 | Agentes do M8 | **Um agente por fase**, cada um começando dos pesos da rede da Fase 1 (decidido em 2026-11-16). Na Fase 2, comparar com um treino do zero para medir se a transferência ajuda | A rede convolucional serve em qualquer mapa e já sabe o básico; um agente para todas as fases fica para a etapa D |
 
 ## Fatos técnicos levantados no código
 
@@ -46,11 +47,10 @@ Jogo alvo: [Monstervale](https://github.com/Brenaki/Monstervale), um tower defen
 | M5 | PPO próprio + mini-TD 5×5 | O PPO resolve o brinquedo de forma consistente (várias sementes) |
 | M6 | Treino na Fase 1 | Critério da decisão 12 cumprido; relatório com a comparação humana |
 | M7 | Assistir ao agente no Godot | Vídeo/GIF do agente vencendo a Fase 1 |
-| M8 | Fases 2 a 5 (agente por fase ou um agente para todas) | Critério cumprido em cada fase |
+| M8 | Fases 2 a 5, um agente por fase partindo da rede da Fase 1 (decisão 13) | Critério cumprido em cada fase |
 
 ## Para decidir depois
 
-- Etapa A, M8: um agente por fase ou um agente para as 5 fases.
 - Modo por eventos: quais eventos disparam decisões; canais de monstros no estado.
 - Etapa C: recompensa por parcela (tempo, ouro gasto); entrada da ação de prioridade; MCTS para o speedrun.
 - Etapa D: gerador de fases (caminhos, entradas, áreas construíveis, ondas) e o protocolo de teste com as 5 fases reais como conjunto nunca visto.
