@@ -36,3 +36,12 @@ Instale o Claude Code para Windows (docs.claude.com) e abra-o na pasta `MonsterV
 - **Processos:** no Windows, os processos novos começam do zero (*spawn*), sem copiar o processo pai. Todo script que usa `ConfigPPO(assincrono=True)` ou `avaliar(..., processos>1)` precisa do bloco `if __name__ == "__main__":`, e as fábricas de ambiente precisam ser serializáveis (`functools.partial(AmbienteMonstervale, "level_01")`, não `lambda`).
 - **Codificação:** sempre `encoding="utf-8"` ao ler e gravar texto (o padrão do Windows é cp1252).
 - **Caminhos:** use `pathlib.Path`, nunca barras escritas à mão.
+
+## Godot e ffmpeg (M7)
+
+No desktop ficam fora do PATH, em `D:\Ferramentas`:
+
+- Godot 4.7.2: `D:\Ferramentas\Godot\Godot_v4.7.2-stable_win64_console.exe` (o `_console` mostra a saída no terminal).
+- ffmpeg: `D:\Ferramentas\ffmpeg\ffmpeg-master-latest-win64-gpl-shared\bin\ffmpeg.exe`.
+
+Depois de clonar, rode uma vez `godot --headless --path jogo --import`. Ele cria o cache `.godot/` dentro de `jogo/`, por isso o git mostra o submódulo como modificado: não faça commit disso.

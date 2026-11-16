@@ -1,0 +1,132 @@
+<title>Rede no Monstervale</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+/* Layout: relatório de uma coluna, com um mapa da Fase 1 desenhado em grade 20×11 como peça central */
+:root {
+  --bg: #f6f7f2;
+  --fg: #1f2620;
+  --muted: #5d6a5f;
+  --line: #d6dccf;
+  --accent: #3f7a3a;
+  --road: #c8b48a;
+  --cell: #e7ecdf;
+  --unit: #2f5d8a;
+  --display: "Pixelify Sans", "IBM Plex Sans", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161b17; --fg: #e3e9e0; --muted: #9aa79b; --line: #2f3a31; --accent: #8fcf86;
+  --road: #6b5d40; --cell: #222a23; --unit: #7fb2e5; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #161b17; --fg: #e3e9e0; --muted: #9aa79b; --line: #2f3a31; --accent: #8fcf86;
+  --road: #6b5d40; --cell: #222a23; --unit: #7fb2e5; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+main { max-width: 760px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 36px; }
+h1, h2 { font-family: var(--display); font-weight: 700; text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 2.2rem; }
+h2 { font-size: 1.35rem; }
+p { margin: 0; max-width: 65ch; }
+section { display: flex; flex-direction: column; gap: 14px; }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lead { font-size: 1.1rem; color: var(--muted); }
+.veredito { border: 2px solid var(--accent); border-radius: 6px; padding: 14px 16px; }
+.veredito strong { color: var(--accent); }
+.tabela { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); font-size: 0.82rem; letter-spacing: 0.03em; }
+tr.rede td { font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+pre { font-family: var(--mono); font-size: 0.85rem; background: var(--cell); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; margin: 0; }
+ul, ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; max-width: 65ch; }
+.mapa { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; max-width: 100%; }
+.mapa div { aspect-ratio: 1; background: var(--cell); border-radius: 2px; font-family: var(--mono); font-size: 0.6rem; display: grid; place-items: center; color: var(--bg); }
+.mapa div.u { background: var(--unit); font-weight: 500; }
+.legenda { font-size: 0.85rem; color: var(--muted); }
+.ordem { font-variant-numeric: tabular-nums; }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<main>
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <span class="eyebrow">Monstervale · Fase 1 · level_01</span>
+    <h1>Uma rede neural aprendeu a fechar a Fase 1 com 3 estrelas</h1>
+    <p class="lead">Um projeto pessoal de aprendizado: uma rede treinada por reforço (PPO) jogando o Monstervale sem nenhuma regra escrita à mão, só olhando o mapa, o ouro e a próxima onda.</p>
+  </header>
+
+  <div class="veredito">
+    <p><strong>Resultado:</strong> 3★ com as 20 vidas na política mais provável, e 3★ em 100 de 100 partidas quando ela sorteia as ações. Também venceu com 3★ dez versões alteradas da fase (tempos ±10% e ±1 monstro por grupo), que nunca viu no treino.</p>
+  </div>
+
+  <section>
+    <h2>Como foi feito</h2>
+    <ul>
+      <li>A simulação do jogo (<span class="mono">src/core/</span>) foi portada para Python. As 42 partidas gravadas em <span class="mono">tests/fixtures/partidas</span> se repetem idênticas, quadro a quadro, contra o Godot.</li>
+      <li>A rede decide nas pausas entre ondas: posicionar, melhorar, dispensar ou chamar a onda. Ela é recompensada só por vidas preservadas, vitória e estrelas, nunca por abates ou ouro.</li>
+      <li>O treino levou cerca de 1 milhão de decisões, umas 9 horas numa CPU de 6 núcleos. Já fazia 3★ na política mais provável com 143 mil.</li>
+      <li>Nada no jogo foi alterado. Ele entra no projeto fixado num commit, como submódulo.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Comparação</h2>
+    <div class="tabela">
+      <table>
+        <thead><tr><th>Jogador</th><th>Partidas</th><th>Vitórias</th><th>3★</th><th>Vidas</th><th>Ouro no fim</th><th>Minutos</th></tr></thead>
+        <tbody>
+          <tr class="rede"><td>rede (mais provável)</td><td>1</td><td>100%</td><td>100%</td><td>20</td><td>116</td><td>7,4</td></tr>
+          <tr class="rede"><td>rede (sorteando)</td><td>100</td><td>100%</td><td>100%</td><td>20,0</td><td>—</td><td>7,3</td></tr>
+          <tr><td>rede, fase alterada</td><td>10</td><td>100%</td><td>100%</td><td>19,6</td><td>—</td><td>7,3</td></tr>
+          <tr><td>robô heurístico</td><td>1</td><td>100%</td><td>0%</td><td>15</td><td>—</td><td>7,0</td></tr>
+          <tr><td>robô só guerreiros</td><td>1</td><td>100%</td><td>100%</td><td>20</td><td>—</td><td>7,3</td></tr>
+          <tr><td>melhor partida humana</td><td>1</td><td>100%</td><td>100%</td><td>20</td><td>127</td><td>5,2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A rede empata com a melhor partida humana em vidas, mas é 2 minutos mais lenta: ela nunca chama ondas antes da hora, porque a recompensa não fala de tempo. Esse é o próximo passo do projeto.</p>
+  </section>
+
+  <section>
+    <h2>A estratégia que ela encontrou</h2>
+    <p>Só guerreiros, nenhum arqueiro, num bloco compacto colado à estrada. Ela começa com dois guerreiros e investe quase todo o ouro em melhorias antes de abrir novas posições.</p>
+    <div class="mapa" id="mapa" aria-label="Grade 20 por 11 da Fase 1 com as posições dos guerreiros"></div>
+    <p class="legenda">Grade 20×11 da Fase 1. Em azul, as células com guerreiros; o número é a ordem em que cada um foi posicionado. A estrada e o restante do mapa não estão desenhados.</p>
+    <ol class="ordem">
+      <li>Antes da onda 1: guerreiros em (14,4) e (14,2).</li>
+      <li>Ondas 1 a 4: melhorias. (14,4) chega ao nível 3 na onda 4.</li>
+      <li>Ondas 5 a 9: novos guerreiros em (13,4), (13,2), (12,4) e (12,2), cada um melhorado logo que sobra ouro.</li>
+      <li>Ondas 10 e 11: (13,4) e (12,4) ao nível 3; último guerreiro em (11,4).</li>
+    </ol>
+    <p><strong>Para o balanceamento:</strong> na Fase 1, a rede nunca escolhe o arqueiro, e o robô que só usa guerreiros também tira 3★. As partidas humanas misturavam arqueiros e guerreiros. Parece que, nesta fase, o guerreiro com bloqueio domina o arqueiro.</p>
+  </section>
+
+  <section>
+    <h2>Como assistir no jogo</h2>
+    <p>A partida da rede vem no mesmo formato dos relatórios que o próprio jogo grava, então o <span class="mono">recorded_player.gd</span> a repete clicando nos botões reais:</p>
+    <ol>
+      <li>Coloque o arquivo em <span class="mono">tests/fixtures/partidas/</span>, com um nome terminado em <span class="mono">_level_01.json</span>.</li>
+      <li>Rode a repetição geral de <span class="mono">tests/e2e/test_recorded_matches.gd</span> pelo GUT, que inclui sozinha toda partida da pasta.</li>
+    </ol>
+    <p class="legenda">O formato já foi conferido com partidas exportadas pelo projeto. Esta partida específica ainda não foi repetida no Godot.</p>
+  </section>
+
+  <footer>
+    O port da simulação e os dados não foram publicados: o Monstervale não tem licença, então nada disso sai daqui sem a sua autorização.
+  </footer>
+</main>
+
+<script>
+  const guerreiros = [[14,4],[14,2],[13,4],[13,2],[12,4],[12,2],[11,4]];
+  const mapa = document.getElementById("mapa");
+  for (let y = 0; y < 11; y++) for (let x = 0; x < 20; x++) {
+    const c = document.createElement("div");
+    const i = guerreiros.findIndex(([gx, gy]) => gx === x && gy === y);
+    if (i >= 0) { c.className = "u"; c.textContent = i + 1; c.title = `guerreiro em (${x},${y})`; }
+    mapa.appendChild(c);
+  }
+</script>
