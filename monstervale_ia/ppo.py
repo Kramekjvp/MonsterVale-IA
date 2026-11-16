@@ -27,6 +27,7 @@ import multiprocessing as mp
 import os
 import time
 import traceback
+from collections import deque
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from multiprocessing.connection import wait
@@ -62,7 +63,12 @@ class ConfigPPO:
     avaliar_a_cada: int = 0  # atualizações entre avaliações (0 = nunca)
     salvar_a_cada: int = 0  # atualizações entre checkpoints (0 = só no fim)
     retomar: bool = False  # continua de pasta/checkpoint.pt, se existir
-    chave_melhor: str | None = None  # chave da avaliação (maior = melhor) que grava melhor_rede.pt
+    # métrica (maior = melhor) da linha de registro que grava melhor_rede.pt, ex. "janela/tres_estrelas"
+    # ou "avaliacao/retorno"; sem barra ("retorno") vale como "avaliacao/retorno"
+    chave_melhor: str | None = None
+    janela_partidas: int = 200  # últimas K partidas do treino (política sorteada) para janela/*
+    criterio_parada: dict = field(default_factory=dict)  # {métrica: mínimo}: todas atingidas = para o treino
+    rede_inicial: str | None = None  # rede.pt/melhor_rede.pt de onde partir (ignorado ao retomar)
     rede: dict = field(default_factory=dict)  # argumentos extras de RedePolitica
 
     @property
@@ -279,10 +285,12 @@ class Registro:
         self.csv.close()
 
 
-def _salvar_checkpoint(pasta: Path, rede, otimizador, atualizacao: int, passo_global: int, melhor, config) -> None:
+def _salvar_checkpoint(
+    pasta: Path, rede, otimizador, atualizacao: int, passo_global: int, melhor, config, janela=()
+) -> None:
     estado = {
         "rede": rede.state_dict(), "otimizador": otimizador.state_dict(),
-        "atualizacao": atualizacao, "passo_global": passo_global, "melhor": melhor,
+        "atualizacao": atualizacao, "passo_global": passo_global, "melhor": melhor, "janela": list(janela),
         "rng_numpy": np.random.get_state(), "rng_torch": torch.get_rng_state(),
         "rng_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
         "config": asdict(config),
@@ -340,14 +348,18 @@ def treinar(
             envs = gym.vector.SyncVectorEnv([fabrica_env] * N, autoreset_mode=gym.vector.AutoresetMode.SAME_STEP)
             espaco, n_acoes = envs.single_observation_space, envs.single_action_space.n
             rede = criar_rede(envs.envs[0], tipos_por_celula, **config.rede).to(disp)
+        if config.rede_inicial and checkpoint is None:
+            _carregar_rede_inicial(rede, config)
         otimizador = torch.optim.Adam(rede.parameters(), lr=config.taxa_aprendizado, eps=1e-5)
 
         passo_global = 0
+        janela: deque = deque(maxlen=max(1, config.janela_partidas))  # últimas partidas terminadas
         melhor = None  # melhor valor de config.chave_melhor visto na avaliação
         if checkpoint:
             rede.load_state_dict(checkpoint["rede"])
             otimizador.load_state_dict(checkpoint["otimizador"])
             passo_global, melhor = checkpoint["passo_global"], checkpoint["melhor"]
+            janela.extend(checkpoint.get("janela", []))
             np.random.set_state(checkpoint["rng_numpy"])
             torch.set_rng_state(checkpoint["rng_torch"])
             if checkpoint["rng_cuda"] is not None and torch.cuda.is_available():
@@ -371,6 +383,7 @@ def treinar(
             retorno_corrente = np.zeros(N)
             passos_corrente = np.zeros(N, dtype=int)
         passo_inicial = passo_global
+        ultima = None  # atualização em que o treino parou antes do fim
         inicio = time.time()
         historico: list[dict] = []
         partidas_recentes: list[dict] = []
@@ -466,6 +479,10 @@ def treinar(
                 "variancia_explicada": float(variancia_explicada),
                 "taxa": otimizador.param_groups[0]["lr"],
             }
+            janela.extend(partidas_recentes)
+            if len(janela) == janela.maxlen and all("estrelas" in p for p in janela):
+                linha["janela/tres_estrelas"] = float(np.mean([p["estrelas"] == 3 for p in janela]))
+                linha["janela/vitorias"] = float(np.mean([p["estrelas"] >= 1 for p in janela]))
             if partidas_recentes:
                 linha["partidas"] = len(partidas_recentes)
                 for chave in partidas_recentes[0]:
@@ -473,25 +490,37 @@ def treinar(
                 partidas_recentes = []
             melhorou = False
             if avaliacao and config.avaliar_a_cada and atualizacao % config.avaliar_a_cada == 0:
-                resultado_av = avaliacao(rede, passo_global)
-                for chave, valor_av in resultado_av.items():
+                for chave, valor_av in avaliacao(rede, passo_global).items():
                     linha[f"avaliacao/{chave}"] = valor_av
-                valor_melhor = resultado_av.get(config.chave_melhor) if config.chave_melhor else None
+            if config.chave_melhor:
+                chave_m = config.chave_melhor if "/" in config.chave_melhor else f"avaliacao/{config.chave_melhor}"
+                valor_melhor = linha.get(chave_m)
                 if valor_melhor is not None and np.isfinite(valor_melhor) and (melhor is None or valor_melhor > melhor):
                     melhor = float(valor_melhor)
                     melhorou = True
                     torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "melhor_rede.pt")
                     linha["avaliacao/melhor"] = melhor
+            parar = bool(config.criterio_parada) and all(
+                chave in linha and np.isfinite(linha[chave]) and linha[chave] >= minimo
+                for chave, minimo in config.criterio_parada.items()
+            )
+            if parar:
+                linha["parou_cedo"] = 1.0
             for chave, valor_l in linha.items():
                 if chave not in ("atualizacao", "passo") and np.isfinite(valor_l):
                     registro(chave, valor_l, passo_global)
             historico.append(linha)
             # checkpoint também quando a melhor rede melhora: o "melhor" salvo nunca fica defasado
             if melhorou or (config.salvar_a_cada and atualizacao % config.salvar_a_cada == 0):
-                _salvar_checkpoint(pasta, rede, otimizador, atualizacao, passo_global, melhor, config)
+                _salvar_checkpoint(pasta, rede, otimizador, atualizacao, passo_global, melhor, config, janela)
+            if parar:
+                ultima = atualizacao
+                break
 
         torch.save({"rede": rede.state_dict(), "config": asdict(config)}, pasta / "rede.pt")
-        _salvar_checkpoint(pasta, rede, otimizador, max(atualizacao_inicial, config.atualizacoes), passo_global, melhor, config)
+        if ultima is None:
+            ultima = max(atualizacao_inicial, config.atualizacoes)
+        _salvar_checkpoint(pasta, rede, otimizador, ultima, passo_global, melhor, config, janela)
         return rede, historico
     finally:
         registro.fechar()
@@ -499,6 +528,16 @@ def treinar(
             coletor.fechar()
         if envs:
             envs.close()
+
+
+def _carregar_rede_inicial(rede: RedePolitica, config: ConfigPPO) -> None:
+    salvo = torch.load(config.rede_inicial, map_location="cpu", weights_only=False)
+    if salvo["config"]["rede"] != config.rede:
+        raise ValueError(
+            f"rede_inicial {config.rede_inicial} tem outra arquitetura: "
+            f"salva {salvo['config']['rede']} x atual {config.rede}"
+        )
+    rede.load_state_dict(salvo["rede"])
 
 
 def _entropia_mascarada(dist, mascara: torch.Tensor) -> torch.Tensor:

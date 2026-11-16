@@ -1,6 +1,7 @@
 """PPO, rede e mini-TD (M5)."""
 
 import functools
+import json
 
 import numpy as np
 import pytest
@@ -221,3 +222,102 @@ def test_retomada_parte_do_melhor_valor_real(tmp_path):
     treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config, avaliacao=lambda rede, passo: {"retorno": 2.0})
     depois = torch.load(tmp_path / "melhor_rede.pt", weights_only=False)["rede"]
     assert all(torch.equal(antes[k], depois[k]) for k in antes)  # a rede pior não sobrescreveu
+
+
+# --- Janela de partidas, melhor rede por métrica, parada, rede inicial (M8) -----------
+
+
+class _FimRapido(mt.MiniTD):
+    """Mini-TD que expõe `estrelas` (3 em todas as partidas) para exercitar a janela."""
+
+    def step(self, acao):
+        obs, r, term, trunc, info = super().step(acao)
+        info = dict(info)
+        info["estrelas"] = 3
+        return obs, r, term, trunc, info
+
+
+def _config_janela(tmp_path, **extra) -> ConfigPPO:
+    base = dict(total_passos=4 * 3 * 16, janela_partidas=2)
+    base.update(extra)
+    return _config_mini(tmp_path, **base)
+
+
+def test_janela_so_aparece_cheia(tmp_path):
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path))
+    com_janela = [h for h in historico if "janela/tres_estrelas" in h]
+    assert com_janela, "a janela de 2 partidas devia encher"
+    primeira = com_janela[0]
+    assert all("janela/tres_estrelas" not in h for h in historico[:historico.index(primeira)])
+    assert primeira["janela/tres_estrelas"] == 1.0 and primeira["janela/vitorias"] == 1.0
+    # janela grande demais nunca enche
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path / "b", janela_partidas=10_000))
+    assert all("janela/tres_estrelas" not in h for h in historico)
+
+
+def test_sem_estrelas_nao_ha_janela(tmp_path):
+    _, historico = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_janela(tmp_path))
+    assert all("janela/tres_estrelas" not in h for h in historico)
+
+
+def test_melhor_rede_por_metrica_da_janela(tmp_path):
+    config = _config_janela(tmp_path, chave_melhor="janela/tres_estrelas")
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, config)
+    assert (tmp_path / "melhor_rede.pt").exists()
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 1.0
+    assert sum("avaliacao/melhor" in h for h in historico) == 1  # estritamente maior: só a 1ª vez
+
+
+def test_chave_com_prefixo_avaliacao_equivale_a_sem_prefixo(tmp_path):
+    retornos = iter([1.0, 3.0, 2.0])
+    config = _config_mini(tmp_path, total_passos=3 * 3 * 16, avaliar_a_cada=1, chave_melhor="avaliacao/retorno")
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config, avaliacao=lambda rede, passo: {"retorno": next(retornos)})
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 3.0
+
+
+def test_parada_antecipada(tmp_path):
+    lote = 3 * 16
+    estrelas = iter([1.0, 2.0, 3.0, 3.0, 3.0, 3.0])
+    config = _config_mini(
+        tmp_path, total_passos=6 * lote, avaliar_a_cada=1,
+        criterio_parada={"avaliacao/estrelas": 3, "avaliacao/retorno": 0.5},
+    )
+    _, historico = treinar(
+        mt.MiniTD, mt.TIPOS_POR_CELULA, config,
+        avaliacao=lambda rede, passo: {"estrelas": next(estrelas), "retorno": 1.0},
+    )
+    assert [h["atualizacao"] for h in historico] == [1, 2, 3]
+    assert historico[-1]["parou_cedo"] == 1.0 and "parou_cedo" not in historico[0]
+    assert (tmp_path / "rede.pt").exists()
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["atualizacao"] == 3
+    salvo = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
+    assert salvo["criterio_parada"]["avaliacao/estrelas"] == 3
+
+
+def test_rede_inicial_carrega_pesos_e_rejeita_arquitetura_diferente(tmp_path):
+    lote = 3 * 16
+    origem = tmp_path / "origem"
+    treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, _config_mini(origem, total_passos=2 * lote))
+    salvo = torch.load(origem / "rede.pt", weights_only=False)["rede"]
+    # taxa 0: depois de 1 atualização os pesos continuam os da rede inicial
+    config = _config_mini(tmp_path / "novo", total_passos=lote, taxa_aprendizado=0.0, anelar_taxa=False,
+                          rede_inicial=str(origem / "rede.pt"))
+    rede, _ = treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, config)
+    assert all(torch.equal(salvo[k], v) for k, v in rede.state_dict().items())
+    outra = _config_mini(tmp_path / "outra", total_passos=lote, rede_inicial=str(origem / "rede.pt"),
+                         rede={"largura": 16, "camadas": 1, "oculta": 8})
+    with pytest.raises(ValueError, match="arquitetura"):
+        treinar(mt.MiniTD, mt.TIPOS_POR_CELULA, outra)
+
+
+def test_retomada_preserva_a_janela(tmp_path):
+    def queda(rede, passo):
+        raise KeyboardInterrupt
+
+    primeira = _config_janela(tmp_path, salvar_a_cada=1, avaliar_a_cada=4)
+    with pytest.raises(KeyboardInterrupt):
+        treinar(_FimRapido, mt.TIPOS_POR_CELULA, primeira, avaliacao=queda)
+    janela = torch.load(tmp_path / "checkpoint.pt", weights_only=False)["janela"]
+    assert len(janela) == 2 and all(p["estrelas"] == 3 for p in janela)
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path, retomar=True))
+    assert historico[0]["atualizacao"] == 4 and "janela/tres_estrelas" in historico[0]  # já cheia na 1ª atualização

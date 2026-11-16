@@ -2,12 +2,14 @@
 
 A cada `--avaliar-a-cada` atualizações, a política gulosa joga uma partida
 (o jogo é determinístico: uma basta) e o resultado vai para o TensorBoard.
-A melhor rede pelo retorno guloso fica em `melhor_rede.pt`; a última, em
+A melhor rede pela fração de partidas 3★ do treino (janela das últimas K partidas,
+política sorteada) fica em `melhor_rede.pt`; a última, em
 `rede.pt`; `checkpoint.pt` permite retomar um treino interrompido.
 
 Uso:
   uv run python ferramentas/treinar_fase.py --fase level_01 --passos 2000000 --nome f1_s1
   uv run python ferramentas/treinar_fase.py --nome f1_s1 --retomar     # continua de onde parou, com a config salva
+  uv run python ferramentas/treinar_fase.py --fase level_02 --nome f2 --partir-de resultados/m6/level_01_rede_1M.pt --parar-em 0.95
   uv run tensorboard --logdir resultados/treinos
   uv run python ferramentas/avaliar_agente.py resultados/treinos/f1_s1/melhor_rede.pt --fase level_01 --processos 8
 """
@@ -58,6 +60,10 @@ if __name__ == "__main__":
     parser.add_argument("--semente", type=int, default=1)
     parser.add_argument("--avaliar-a-cada", type=int, default=10, help="atualizações")
     parser.add_argument("--salvar-a-cada", type=int, default=10, help="atualizações")
+    parser.add_argument("--partir-de", default=None, help="rede.pt/melhor_rede.pt de onde começar (pesos; otimizador novo)")
+    parser.add_argument("--parar-em", type=float, default=0.0,
+                        help="para quando janela/tres_estrelas >= x e a avaliação gulosa tirar 3★ (0 = não para)")
+    parser.add_argument("--janela", type=int, default=200, help="partidas da janela de treino")
     parser.add_argument("--retomar", action="store_true",
                         help="continua o treino da pasta com a config e a fase salvas (os outros argumentos são ignorados)")
     args = parser.parse_args()
@@ -80,7 +86,9 @@ if __name__ == "__main__":
             total_passos=args.passos, n_ambientes=args.ambientes, passos_por_coleta=args.passos_por_coleta,
             gamma=args.gamma, taxa_aprendizado=args.taxa, coef_entropia=args.entropia,
             semente=args.semente, assincrono=True, dispositivo="auto", pasta=str(pasta),
-            avaliar_a_cada=args.avaliar_a_cada, salvar_a_cada=args.salvar_a_cada, chave_melhor="retorno",
+            avaliar_a_cada=args.avaliar_a_cada, salvar_a_cada=args.salvar_a_cada, chave_melhor="janela/tres_estrelas",
+            janela_partidas=args.janela, rede_inicial=args.partir_de,
+            criterio_parada=({"janela/tres_estrelas": args.parar_em, "avaliacao/estrelas": 3} if args.parar_em > 0 else {}),
         )
     rede, historico = treinar(
         functools.partial(AmbienteMonstervale, args.fase), TIPOS_POR_CELULA, config,
@@ -92,4 +100,10 @@ if __name__ == "__main__":
                   f"  guloso {h['avaliacao/retorno']:+.2f} ({h['avaliacao/estrelas']:.0f}★,"
                   f" {h['avaliacao/vidas']:.0f} vidas)  entropia {h['entropia']:.2f}"
                   f"  {h['passos_por_segundo']:.0f} passos/s")
+    finais = [h for h in historico if "janela/tres_estrelas" in h]
+    if finais:
+        print(f"janela/tres_estrelas final: {finais[-1]['janela/tres_estrelas']:.3f}"
+              f" (vitórias {finais[-1]['janela/vitorias']:.3f})")
+    if any("parou_cedo" in h for h in historico):
+        print(f"parou cedo no passo {historico[-1]['passo']}")
     print(f"CUDA: {torch.cuda.is_available()}  → {config.pasta}")
