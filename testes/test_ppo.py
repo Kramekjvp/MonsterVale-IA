@@ -227,13 +227,24 @@ def test_retomada_parte_do_melhor_valor_real(tmp_path):
 # --- Janela de partidas, melhor rede por métrica, parada, rede inicial (M8) -----------
 
 
+def _estrelas_da_partida(n: int) -> int:
+    """Estrelas da n-ésima partida terminada (n = 1, 2, ...) de um ambiente: 3, 2, 1, 0, 3, 2, 1, 0, ..."""
+    return (n * 7) % 4
+
+
 class _FimRapido(mt.MiniTD):
-    """Mini-TD que expõe `estrelas` (3 em todas as partidas) para exercitar a janela."""
+    """Mini-TD que expõe `estrelas` variadas (ciclo 3, 2, 1, 0 por ambiente) para exercitar a janela."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.terminadas = 0
 
     def step(self, acao):
         obs, r, term, trunc, info = super().step(acao)
         info = dict(info)
-        info["estrelas"] = 3
+        if term or trunc:
+            self.terminadas += 1
+        info["estrelas"] = _estrelas_da_partida(max(1, self.terminadas))
         return obs, r, term, trunc, info
 
 
@@ -243,13 +254,46 @@ def _config_janela(tmp_path, **extra) -> ConfigPPO:
     return _config_mini(tmp_path, **base)
 
 
+def _sequencia_de_estrelas(n: int) -> list[int]:
+    return [_estrelas_da_partida(k) for k in range(1, n + 1)]
+
+
+def _confere_fracao_da_janela(historico, K, anteriores=()):
+    """Com UM ambiente a ordem das partidas é a do ciclo de estrelas: confere, atualização a
+    atualização, a fração de 3 estrelas e de vitórias nas últimas K partidas terminadas."""
+    terminadas = list(anteriores)
+    novas = 0  # partidas já terminadas pelo ambiente atual
+    conferidas = 0
+    for h in historico:
+        novas += int(h.get("partidas", 0))
+        terminadas = list(anteriores) + _sequencia_de_estrelas(novas)
+        if len(terminadas) < K:
+            assert "janela/tres_estrelas" not in h
+            continue
+        ultimas = terminadas[-K:]
+        assert h["janela/tres_estrelas"] == pytest.approx(sum(e == 3 for e in ultimas) / K)
+        assert h["janela/vitorias"] == pytest.approx(sum(e >= 1 for e in ultimas) / K)
+        conferidas += 1
+    return conferidas
+
+
+@pytest.mark.parametrize("assincrono", [False, True])
+def test_fracao_da_janela_conta_as_ultimas_k_partidas(tmp_path, assincrono):
+    config = _config_janela(tmp_path, n_ambientes=1, total_passos=8 * 16, janela_partidas=5, assincrono=assincrono)
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, config)
+    assert sum(h.get("partidas", 0) for h in historico) > 10
+    assert _confere_fracao_da_janela(historico, 5) >= 3
+    # as frações não são triviais: a janela mistura partidas de 0 a 3 estrelas
+    assert len({h["janela/tres_estrelas"] for h in historico if "janela/tres_estrelas" in h}) > 1
+
+
 def test_janela_so_aparece_cheia(tmp_path):
     _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path))
     com_janela = [h for h in historico if "janela/tres_estrelas" in h]
     assert com_janela, "a janela de 2 partidas devia encher"
     primeira = com_janela[0]
     assert all("janela/tres_estrelas" not in h for h in historico[:historico.index(primeira)])
-    assert primeira["janela/tres_estrelas"] == 1.0 and primeira["janela/vitorias"] == 1.0
+    assert 0.0 <= primeira["janela/tres_estrelas"] <= primeira["janela/vitorias"] <= 1.0
     # janela grande demais nunca enche
     _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path / "b", janela_partidas=10_000))
     assert all("janela/tres_estrelas" not in h for h in historico)
@@ -264,8 +308,10 @@ def test_melhor_rede_por_metrica_da_janela(tmp_path):
     config = _config_janela(tmp_path, chave_melhor="janela/tres_estrelas")
     _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, config)
     assert (tmp_path / "melhor_rede.pt").exists()
-    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == 1.0
-    assert sum("avaliacao/melhor" in h for h in historico) == 1  # estritamente maior: só a 1ª vez
+    valores = [h["janela/tres_estrelas"] for h in historico if "janela/tres_estrelas" in h]
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=False)["melhor"] == max(valores)
+    recordes = sum(v > max(valores[:i], default=-1.0) for i, v in enumerate(valores))
+    assert sum("avaliacao/melhor" in h for h in historico) == recordes  # estritamente maior: empate não grava
 
 
 def test_chave_com_prefixo_avaliacao_equivale_a_sem_prefixo(tmp_path):
@@ -314,10 +360,18 @@ def test_retomada_preserva_a_janela(tmp_path):
     def queda(rede, passo):
         raise KeyboardInterrupt
 
-    primeira = _config_janela(tmp_path, salvar_a_cada=1, avaliar_a_cada=4)
+    K = 5  # maior que as partidas de UMA atualização, menor que as de antes da queda
+    comum = dict(n_ambientes=1, janela_partidas=K, total_passos=8 * 16)
+    primeira = _config_janela(tmp_path, salvar_a_cada=1, avaliar_a_cada=4, **comum)
     with pytest.raises(KeyboardInterrupt):
         treinar(_FimRapido, mt.TIPOS_POR_CELULA, primeira, avaliacao=queda)
     janela = torch.load(tmp_path / "checkpoint.pt", weights_only=False)["janela"]
-    assert len(janela) == 2 and all(p["estrelas"] == 3 for p in janela)
-    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path, retomar=True))
-    assert historico[0]["atualizacao"] == 4 and "janela/tres_estrelas" in historico[0]  # já cheia na 1ª atualização
+    assert len(janela) == K
+    antigas = [int(p["estrelas"]) for p in janela]
+    _, historico = treinar(_FimRapido, mt.TIPOS_POR_CELULA, _config_janela(tmp_path, retomar=True, **comum))
+    assert historico[0]["atualizacao"] == 4
+    # a 1ª atualização retomada tem menos de K partidas novas: a métrica só existe e só tem o
+    # valor certo se a janela do checkpoint foi lida (o ciclo de estrelas reinicia no novo ambiente)
+    assert historico[0].get("partidas", 0) < K
+    assert "janela/tres_estrelas" in historico[0]
+    assert _confere_fracao_da_janela(historico, K, anteriores=antigas) == len(historico)
