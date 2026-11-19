@@ -30,7 +30,12 @@ custos, bônus de chamar agora e ações restantes nesta construção.
 Recompensa (decisão 7)
 ----------------------
 Por onda: −(vidas perdidas ÷ vidas iniciais). No fim: vitória +1 e +0,5 por
-estrela; derrota −1. Nada por abates nem por ouro.
+estrela. Derrota graduada: o termo final é ``derrota × (ondas que faltavam ÷
+total de ondas)``. ``Simulacao.ondas_iniciadas()`` é 1-based no momento da derrota
+(a onda chamada já conta, e só se chama uma por vez), então perder na onda N
+deixa N−1 vencidas e faltavam ``total − N + 1``: perder na onda 1 vale o peso
+inteiro (−1) e perder na última vale ``derrota ÷ total``. Assim durar mais
+sempre é melhor, mesmo sem vencer. Nada por abates nem por ouro.
 """
 
 from __future__ import annotations
@@ -80,6 +85,8 @@ QUADROS_MAXIMOS_POR_ONDA = 60 * 60 * 10  # 10 minutos de jogo: só uma trava de 
 class Recompensas:
     vitoria: float = 1.0
     por_estrela: float = 0.5
+    # Peso da derrota: o termo final é derrota × (ondas que faltavam ÷ total de ondas),
+    # ou seja, derrota na onda 1 vale o peso inteiro e derrota tardia vale bem menos.
     derrota: float = -1.0
 
 
@@ -173,7 +180,9 @@ class AmbienteMonstervale(gym.Env):
         if self.sim.estado == "won":
             recompensa += self.recompensas.vitoria + self.recompensas.por_estrela * self.sim.estrelas()
         elif self.sim.estado == "lost":
-            recompensa += self.recompensas.derrota
+            total = self.sim.total_ondas()
+            faltavam = total - (self.sim.ondas_iniciadas() - 1)  # ondas_iniciadas é a da derrota (1-based)
+            recompensa += self.recompensas.derrota * (faltavam / total)
         if (terminou or truncado) and self.relatorio is not None:
             self.relatorio.terminar(self.sim.estado, self.sim)
         return self._observacao(), float(recompensa), terminou, truncado, self._info()

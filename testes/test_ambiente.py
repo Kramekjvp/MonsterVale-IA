@@ -121,7 +121,74 @@ def test_recompensa_soma_vidas_perdidas_e_resultado():
     if resumo["estado"] == "won":
         esperado = -perdidas + r.vitoria + r.por_estrela * resumo["estrelas"]
     else:
-        esperado = -perdidas + r.derrota
+        # derrota graduada: peso × (ondas que faltavam ÷ total); ondas_iniciadas é a onda da derrota
+        faltavam = (env.sim.total_ondas() - env.sim.ondas_iniciadas() + 1) / env.sim.total_ondas()
+        esperado = -perdidas + r.derrota * faltavam
+    assert resumo["retorno"] == pytest.approx(esperado)
+
+
+def _perder_sem_construir(fase, **opcoes):
+    """Chama as ondas sem posicionar nada até perder. Devolve (onda da derrota, retorno, env)."""
+    env = AmbienteMonstervale(fase, **opcoes)
+    env.reset()
+    retorno = 0.0
+    while True:
+        _, recompensa, terminou, truncado, info = env.step(ACAO_CHAMAR)
+        retorno += recompensa
+        if terminou or truncado:
+            assert env.sim.estado == "lost"
+            return info["onda"], retorno, env
+
+
+def test_derrota_graduada_valor_exato():
+    # Sem defesa, a level_01 perde na onda 3 (1-based: ondas_iniciadas já contava a da derrota).
+    # Venceu 2 de 12 ondas, então faltavam 10/12; as vidas perdidas somam 20/20 = 1.
+    onda, retorno, _ = _perder_sem_construir("level_01")
+    assert onda == 3
+    assert retorno == pytest.approx(-1.0 - 10 / 12)
+    # level_03 perde na onda 4: faltavam 9/12
+    onda, retorno, _ = _perder_sem_construir("level_03")
+    assert onda == 4
+    assert retorno == pytest.approx(-1.0 - 9 / 12)
+
+
+def test_derrota_na_onda_1_vale_o_peso_cheio():
+    env = AmbienteMonstervale("level_01")
+    env.reset()
+    env.sim.vidas = 1  # um monstro que passe já derrota, ainda na onda 1
+    _, recompensa, terminou, _, info = env.step(ACAO_CHAMAR)
+    assert terminou and env.sim.estado == "lost" and info["onda"] == 1
+    assert recompensa == pytest.approx(-1 / 20 - 1.0)  # peso × 12/12: igual ao comportamento antigo
+
+
+def test_derrota_cedo_vale_menos_que_derrota_tardia():
+    # Mesma fase, mesmo número de vidas: perder cada vez mais tarde tem que doer menos.
+    retornos = []
+    for onda_da_derrota in (1, 6, 12):
+        env = AmbienteMonstervale("level_01")
+        env.reset()
+        env.sim._proxima_onda = onda_da_derrota - 1
+        env.sim.vidas = 1
+        _, r, terminou, *_ = env.step(ACAO_CHAMAR)
+        assert terminou and env.sim.estado == "lost" and env.sim.ondas_iniciadas() == onda_da_derrota
+        retornos.append(r)
+    assert retornos[0] < retornos[1] < retornos[2]
+    assert retornos[2] == pytest.approx(-1 / 20 - 1 / 12)
+
+
+def test_peso_da_derrota_escala_a_derrota_graduada():
+    _, retorno, _ = _perder_sem_construir("level_01", recompensas=Recompensas(derrota=-3.0))
+    assert retorno == pytest.approx(-1.0 - 3.0 * 10 / 12)
+
+
+def test_vitoria_inalterada_pela_derrota_graduada():
+    # A recompensa da vitória não depende de derrota: vidas perdidas + vitória + estrelas.
+    env = AmbienteMonstervale("level_01")
+    resumo = jogar(env, heuristico())
+    if resumo["estado"] != "won":
+        pytest.skip("o heurístico não vence a level_01 neste commit")
+    r = Recompensas()
+    esperado = -(20 - resumo["vidas"]) / 20 + r.vitoria + r.por_estrela * resumo["estrelas"]
     assert resumo["retorno"] == pytest.approx(esperado)
 
 
