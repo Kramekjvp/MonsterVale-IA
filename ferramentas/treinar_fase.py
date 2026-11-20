@@ -23,17 +23,17 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import torch
 
 from monstervale_ia.agentes import jogar
 from monstervale_ia.ambiente import TIPOS_POR_CELULA, AmbienteMonstervale
-from monstervale_ia.ppo import ConfigPPO, escolher, treinar
 
 RAIZ = Path(__file__).resolve().parent.parent
 
 
 def avaliar_gulosa(rede, passo: int, fase: str) -> dict:
     """Uma partida gulosa (determinística) com a rede atual."""
+    from monstervale_ia.ppo import escolher  # aqui dentro: o topo do script roda nos filhos (spawn), sem torch
+
     rede.eval()
 
     def agir(env: AmbienteMonstervale, rng: np.random.Generator) -> int:
@@ -47,7 +47,11 @@ def avaliar_gulosa(rede, passo: int, fase: str) -> dict:
     }
 
 
-if __name__ == "__main__":
+def principal() -> None:
+    import torch
+
+    from monstervale_ia.ppo import ConfigPPO, treinar
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--fase", default="level_01")
     parser.add_argument("--nome", required=True, help="pasta em resultados/treinos/")
@@ -107,3 +111,7 @@ if __name__ == "__main__":
     if any("parou_cedo" in h for h in historico):
         print(f"parou cedo no passo {historico[-1]['passo']}")
     print(f"CUDA: {torch.cuda.is_available()}  → {config.pasta}")
+
+
+if __name__ == "__main__":
+    principal()

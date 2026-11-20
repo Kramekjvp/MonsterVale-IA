@@ -26,7 +26,6 @@ import json
 import multiprocessing as mp
 import os
 import time
-import traceback
 from collections import deque
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -39,6 +38,7 @@ import torch
 from torch import nn
 
 from monstervale_ia.rede import NOTA_PROIBIDA, RedePolitica
+from monstervale_ia.trabalhador import CHAVES_FINAIS, trabalhador
 
 
 @dataclass
@@ -58,6 +58,7 @@ class ConfigPPO:
     norma_max_gradiente: float = 0.5
     semente: int = 1
     assincrono: bool = False  # ambientes em processos separados (use no desktop)
+    tempo_inicializacao: float = 300.0  # segundos para cada processo de ambiente ficar pronto (assíncrono)
     dispositivo: str = "auto"  # "auto", "cpu" ou "cuda"
     pasta: str = "resultados/treinos/teste"
     avaliar_a_cada: int = 0  # atualizações entre avaliações (0 = nunca)
@@ -123,35 +124,6 @@ def vantagens_gae(
     return vantagens, vantagens + valores
 
 
-CHAVES_FINAIS = ("estrelas", "vidas", "onda", "tracado")
-
-
-def _trabalhador(conexao, fabrica_env, semente: int) -> None:
-    """Processo de UM ambiente: recebe ações, faz step e o autoreset, devolve tudo de uma vez."""
-    try:
-        env = fabrica_env()
-        obs, _ = env.reset(seed=semente)
-        conexao.send((obs, np.asarray(env.action_masks(), dtype=bool)))
-        while True:
-            comando, acao = conexao.recv()
-            if comando == "fechar":
-                break
-            obs, r, term, trunc, info = env.step(acao)
-            info_final = None
-            if term or trunc:
-                info_final = {c: float(info[c]) for c in CHAVES_FINAIS if c in info}
-                obs, _ = env.reset()  # autoreset (SAME_STEP): o obs devolvido já é o da próxima partida
-            conexao.send((obs, np.asarray(env.action_masks(), dtype=bool), float(r), bool(term), bool(trunc), info_final))
-        env.close()
-    except BaseException:  # noqa: BLE001 - o principal precisa saber por que o trabalhador morreu
-        try:
-            conexao.send(("erro", traceback.format_exc()))
-        except Exception:
-            pass
-    finally:
-        conexao.close()
-
-
 class ColetorAssincrono:
     """Um processo por ambiente; cada ambiente anda no seu ritmo (sem passo travado).
 
@@ -163,20 +135,31 @@ class ColetorAssincrono:
     coleta, então continua on-policy.
     """
 
-    def __init__(self, fabrica_env: Callable[[], gym.Env], n: int, semente: int) -> None:
+    def __init__(
+        self, fabrica_env: Callable[[], gym.Env], n: int, semente: int, tempo_inicializacao: float = 300.0,
+    ) -> None:
         self.n = n
         self.conexoes: list = []
         self.processos: list = []
+        self.diagnosticos: list[dict] = []
         try:
             ctx = mp.get_context("spawn")
             for i in range(n):
                 pai, filho = ctx.Pipe()
-                processo = ctx.Process(target=_trabalhador, args=(filho, fabrica_env, semente + i), daemon=True)
+                processo = ctx.Process(target=trabalhador, args=(filho, fabrica_env, semente + i), daemon=True)
                 processo.start()
                 filho.close()
                 self.conexoes.append(pai)
                 self.processos.append(processo)
-            iniciais = [self._receber(c) for c in self.conexoes]
+            # handshake: cada filho manda "pronto" depois de criar o ambiente; sem isso, falha em vez de travar
+            prazo = time.monotonic() + tempo_inicializacao
+            iniciais = []
+            for i in range(n):
+                msg = self._receber(i, prazo, "na inicialização")
+                if msg[0] != "pronto":
+                    raise RuntimeError(f"ambiente {i}: handshake inesperado: {msg[0]!r}")
+                self.diagnosticos.append(msg[1])
+                iniciais.append((msg[2], msg[3]))
         except BaseException:
             self.fechar()
             raise
@@ -186,14 +169,33 @@ class ColetorAssincrono:
         self.retorno_corrente = np.zeros(n)
         self.passos_corrente = np.zeros(n, dtype=int)
 
-    @staticmethod
-    def _receber(conexao):
-        try:
-            msg = conexao.recv()
-        except EOFError as e:
-            raise RuntimeError("um processo de ambiente morreu sem avisar") from e
+    def _morreu(self, i: int, quando: str, causa: BaseException | None = None) -> RuntimeError:
+        processo = self.processos[i]
+        processo.join(timeout=2)
+        erro = RuntimeError(
+            f"o processo do ambiente {i} (pid {processo.pid}) morreu {quando}, código de saída {processo.exitcode}"
+            " (se foi na importação do torch, falta memória commit do Windows)"
+        )
+        erro.__cause__ = causa
+        return erro
+
+    def _receber(self, i: int, prazo: float | None = None, quando: str = "durante a coleta"):
+        """Recebe do ambiente i; nunca espera para sempre por um filho morto."""
+        conexao, processo = self.conexoes[i], self.processos[i]
+        while True:
+            try:
+                if conexao.poll(0.2):
+                    return self._interpretar(i, conexao.recv(), quando)
+            except (EOFError, ConnectionError, OSError) as e:
+                raise self._morreu(i, quando, e) from e
+            if not processo.is_alive() and not conexao.poll(0):
+                raise self._morreu(i, quando)
+            if prazo is not None and time.monotonic() > prazo:
+                raise TimeoutError(f"o ambiente {i} não ficou pronto a tempo {quando} (pid {processo.pid})")
+
+    def _interpretar(self, i: int, msg, quando: str):
         if len(msg) == 2 and isinstance(msg[0], str) and msg[0] == "erro":
-            raise RuntimeError(f"erro num processo de ambiente:\n{msg[1]}")
+            raise RuntimeError(f"erro no processo do ambiente {i} {quando}:\n{msg[1]}")
         return msg
 
     def coletar(self, rede, T, grids, globais, mascaras, acoes, logprobs, recompensas, terminados, valores, disp):
@@ -221,9 +223,14 @@ class ColetorAssincrono:
                 prontos = []
             if not pendentes:
                 break
-            for conexao in wait(list(pendentes)):
+            prontas = wait(list(pendentes), timeout=1.0)
+            if not prontas:  # ninguém respondeu: confere se algum filho morreu em silêncio
+                for i in pendentes.values():
+                    if not self.processos[i].is_alive():
+                        raise self._morreu(i, "durante a coleta")
+            for conexao in prontas:
                 i = pendentes.pop(conexao)
-                obs, mascara_i, r, term, trunc, info_final = self._receber(conexao)
+                obs, mascara_i, r, term, trunc, info_final = self._receber(i)
                 t = contador[i]
                 fim = term or trunc
                 recompensas[t, i], terminados[t, i] = r, fim
@@ -375,7 +382,7 @@ def treinar(
         valores = np.zeros((T, N), dtype=np.float32)
 
         if config.assincrono:
-            coletor = ColetorAssincrono(fabrica_env, N, semente_envs)
+            coletor = ColetorAssincrono(fabrica_env, N, semente_envs, config.tempo_inicializacao)
         else:
             obs, _ = envs.reset(seed=semente_envs)
             grid, glob = _tensores(obs, disp)

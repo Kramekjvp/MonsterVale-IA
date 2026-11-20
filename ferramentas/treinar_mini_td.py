@@ -18,12 +18,13 @@ from pathlib import Path
 import numpy as np
 
 from monstervale_ia.mini_td import RETORNO_OTIMO, TIPOS_POR_CELULA, TRACADOS, MiniTD
-from monstervale_ia.ppo import ConfigPPO, escolher, treinar
 
 RAIZ = Path(__file__).resolve().parent.parent
 
 
 def avaliar_mini_td(rede, partidas_por_tracado: int = 20, gulosa: bool = True, semente: int = 0) -> dict:
+    from monstervale_ia.ppo import escolher  # aqui dentro: o topo do script roda nos filhos (spawn), sem torch
+
     rng = np.random.default_rng(semente)
     resultado = {}
     for tracado in range(len(TRACADOS)):
@@ -44,7 +45,9 @@ def avaliar_mini_td(rede, partidas_por_tracado: int = 20, gulosa: bool = True, s
     return resultado
 
 
-if __name__ == "__main__":
+def principal() -> None:
+    from monstervale_ia.ppo import ConfigPPO, treinar
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--sementes", type=int, nargs="+", default=[1])
     parser.add_argument("--passos", type=int, default=150_000)
@@ -76,3 +79,7 @@ if __name__ == "__main__":
     saida = RAIZ / "resultados" / "mini_td_resumo.json"
     saida.write_text(json.dumps(resumo, indent=2), encoding="utf-8")
     print(f"ótimo: {RETORNO_OTIMO}  → {saida}")
+
+
+if __name__ == "__main__":
+    principal()
